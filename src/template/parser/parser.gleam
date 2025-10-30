@@ -6,12 +6,25 @@ import template/parser/error
 import template/parser/lexer
 import template/template
 
+fn unescape(in: String) {
+  case in {
+    "\\\\" -> "\\"
+    "\\}" -> "}"
+    "\\)" -> ")"
+    "\\," -> ","
+    "\\n" -> "\n"
+    "\\t" -> "\t"
+    "\\r" -> "\r"
+    _ -> in
+  }
+}
+
 fn text() {
   use ts <- nibble.do(
     nibble.take_map_while1("text", fn(token) {
       case token {
         lexer.TextToken(t) -> Some(t)
-        lexer.EscapedTextToken(t) -> Some(t)
+        lexer.EscapedTextToken(t) -> Some(unescape(t))
         _ -> None
       }
     }),
@@ -77,7 +90,7 @@ fn parameter() {
     nibble.take_map_while1("parameter", fn(t) {
       case t {
         lexer.ParameterToken(p) -> Some(p)
-        lexer.EscapedParameterToken(p) -> Some(p)
+        lexer.EscapedParameterToken(p) -> Some(unescape(p))
         _ -> None
       }
     }),
@@ -94,5 +107,5 @@ pub fn run(input: String) {
 
   let parser = nibble.many(nibble.one_of([variable(), text()]))
 
-  nibble.run(echo tokens, parser) |> result.map_error(error.ParseError)
+  nibble.run(tokens, parser) |> result.map_error(error.ParseError)
 }

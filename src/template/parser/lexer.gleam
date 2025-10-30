@@ -1,3 +1,4 @@
+import gleam/list
 import gleam/regexp
 import nibble/lexer
 
@@ -28,15 +29,16 @@ pub type Token {
   EscapedParameterToken(String)
 }
 
-fn text(trans: fn(String) -> Token) {
+fn text(trans: fn(String) -> Token, stops: List(String)) {
   use mode, lexeme, next <- lexer.custom
 
   case lexeme {
     "" -> lexer.Skip
+    "\\" <> _s -> lexer.NoMatch
     _ ->
-      case next {
-        "{" | "\\" | "" if lexeme != "\\" -> lexer.Keep(trans(lexeme), mode)
-        _ -> lexer.Skip
+      case list.any(["", ..stops], fn(s) { s == next }) {
+        True -> lexer.Keep(trans(lexeme), mode)
+        False -> lexer.Skip
       }
   }
 }
@@ -47,40 +49,6 @@ fn escaped_text(trans: fn(String) -> Token) {
   case lexeme {
     "\\" -> lexer.Skip
     "\\" <> _s -> lexer.Keep(trans(lexeme), mode)
-    _ -> lexer.NoMatch
-  }
-}
-
-fn parameter() {
-  use mode, lexeme, next <- lexer.custom
-
-  case mode {
-    ParameterMode -> {
-      case lexeme {
-        "" -> lexer.Skip
-        _ ->
-          case next {
-            "," | ")" | "\\" | "" if lexeme != "\\" ->
-              lexer.Keep(ParameterToken(lexeme), mode)
-            _ -> lexer.Skip
-          }
-      }
-    }
-    _ -> lexer.NoMatch
-  }
-}
-
-fn escaped_parameter() {
-  use mode, lexeme, _next <- lexer.custom
-
-  case mode {
-    ParameterMode -> {
-      case lexeme {
-        "\\" -> lexer.Skip
-        "\\" <> _s -> lexer.Keep(EscapedTextToken(lexeme), mode)
-        _ -> lexer.NoMatch
-      }
-    }
     _ -> lexer.NoMatch
   }
 }
@@ -109,7 +77,7 @@ pub fn run(s: String) {
       case mode {
         TextMode -> [
           lexer.token("{", LBraceToken) |> lexer.into(fn(_) { VariableMode }),
-          text(TextToken),
+          text(TextToken, ["\\", "{"]),
           escaped_text(EscapedTextToken),
         ]
         VariableMode -> [
@@ -128,8 +96,8 @@ pub fn run(s: String) {
         ParameterMode -> [
           lexer.token(")", RParanToken) |> lexer.into(fn(_) { ModMode }),
           lexer.token(",", CommaToken),
-          parameter(),
-          escaped_parameter(),
+          text(ParameterToken, ["\\", ")", ","]),
+          escaped_text(EscapedParameterToken),
         ]
       }
     })

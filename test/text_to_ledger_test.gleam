@@ -21,7 +21,7 @@ pub fn text_to_ledger_test() {
       Ok([
         template.Literal("hello"),
         template.Variable("var", []),
-        template.Literal("good \\nbye"),
+        template.Literal("good \nbye"),
       ]),
     ),
     #(
@@ -60,7 +60,16 @@ pub fn text_to_ledger_test() {
     #(
       "{var1|mod( p, x\\, )}",
       Ok([
-        template.Variable("var1", [template.Mod("mod", [" p", " x\\, "])]),
+        template.Variable("var1", [template.Mod("mod", [" p", " x, "])]),
+      ]),
+    ),
+    #(
+      "{var1|mod( p, x\\, )|mod2( \\)} )}",
+      Ok([
+        template.Variable("var1", [
+          template.Mod("mod", [" p", " x, "]),
+          template.Mod("mod2", [" )} "]),
+        ]),
       ]),
     ),
   ]
