@@ -54,22 +54,37 @@ fn mod() {
       }
     }),
   )
-  use parameters <- nibble.do(parameters())
+  use parameters <- nibble.do(nibble.or(parameters(), []))
 
   nibble.succeed(template.Mod(name, parameters))
 }
 
 fn parameters() {
-  nibble.sequence(parameter(), nibble.token(lexer.CommaToken))
+  use _ <- nibble.do(nibble.token(lexer.LParanToken))
+
+  use ps <- nibble.do(nibble.sequence(
+    parameter(),
+    nibble.token(lexer.CommaToken),
+  ))
+
+  use _ <- nibble.do(nibble.token(lexer.RParanToken))
+
+  nibble.succeed(ps)
 }
 
 fn parameter() {
-  nibble.take_map("parameter", fn(t) {
-    case t {
-      lexer.ParameterToken(p) -> Some(p)
-      _ -> None
-    }
-  })
+  use ts <- nibble.do(
+    nibble.take_map_while1("parameter", fn(t) {
+      case t {
+        lexer.ParameterToken(p) -> Some(p)
+        lexer.EscapedParameterToken(p) -> Some(p)
+        _ -> None
+      }
+    }),
+  )
+
+  let t = string.concat(ts)
+  nibble.succeed(t)
 }
 
 pub fn run(input: String) {

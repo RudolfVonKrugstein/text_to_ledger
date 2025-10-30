@@ -28,31 +28,25 @@ pub type Token {
   EscapedParameterToken(String)
 }
 
-fn text() {
+fn text(trans: fn(String) -> Token) {
   use mode, lexeme, next <- lexer.custom
 
-  case mode {
-    TextMode -> {
+  case lexeme {
+    "" -> lexer.Skip
+    _ ->
       case next {
-        "{" | "\\" | "" if lexeme != "\\" -> lexer.Keep(TextToken(lexeme), mode)
+        "{" | "\\" | "" if lexeme != "\\" -> lexer.Keep(trans(lexeme), mode)
         _ -> lexer.Skip
       }
-    }
-    _ -> lexer.NoMatch
   }
 }
 
-fn escaped_text() {
+fn escaped_text(trans: fn(String) -> Token) {
   use mode, lexeme, _next <- lexer.custom
 
-  case mode {
-    TextMode -> {
-      case lexeme {
-        "\\" -> lexer.Skip
-        "\\" <> _s -> lexer.Keep(EscapedTextToken(lexeme), mode)
-        _ -> lexer.NoMatch
-      }
-    }
+  case lexeme {
+    "\\" -> lexer.Skip
+    "\\" <> _s -> lexer.Keep(trans(lexeme), mode)
     _ -> lexer.NoMatch
   }
 }
@@ -62,10 +56,14 @@ fn parameter() {
 
   case mode {
     ParameterMode -> {
-      case next {
-        "," | ")" | "\\" | "" if lexeme != "\\" ->
-          lexer.Keep(ParameterToken(lexeme), mode)
-        _ -> lexer.Skip
+      case lexeme {
+        "" -> lexer.Skip
+        _ ->
+          case next {
+            "," | ")" | "\\" | "" if lexeme != "\\" ->
+              lexer.Keep(ParameterToken(lexeme), mode)
+            _ -> lexer.Skip
+          }
       }
     }
     _ -> lexer.NoMatch
@@ -87,8 +85,8 @@ fn escaped_parameter() {
   }
 }
 
-fn variable() {
-  use _mode, lexeme, next <- lexer.custom
+fn name(trans: fn(String) -> Token) {
+  use mode, lexeme, next <- lexer.custom
 
   let assert Ok(r) =
     regexp.compile("[a-zA-Z][a-zA-Z0-9_]*", regexp.Options(False, False))
@@ -99,7 +97,7 @@ fn variable() {
     False -> lexer.NoMatch
     True ->
       case regexp.check(n, next) {
-        False -> lexer.Keep(VariableToken(lexeme), VariableMode)
+        False -> lexer.Keep(trans(lexeme), mode)
         True -> lexer.Skip
       }
   }
@@ -111,18 +109,18 @@ pub fn run(s: String) {
       case mode {
         TextMode -> [
           lexer.token("{", LBraceToken) |> lexer.into(fn(_) { VariableMode }),
-          text(),
-          escaped_text(),
+          text(TextToken),
+          escaped_text(EscapedTextToken),
         ]
         VariableMode -> [
           lexer.whitespace(WhiteSpace) |> lexer.ignore,
           lexer.token("}", RBraceToken) |> lexer.into(fn(_) { TextMode }),
           lexer.token("|", PipeToken) |> lexer.into(fn(_) { ModMode }),
-          variable(),
+          name(VariableToken),
         ]
         ModMode -> [
           lexer.whitespace(WhiteSpace) |> lexer.ignore,
-          variable(),
+          name(ModToken),
           lexer.token("}", RBraceToken) |> lexer.into(fn(_) { TextMode }),
           lexer.token("|", PipeToken),
           lexer.token("(", LParanToken) |> lexer.into(fn(_) { ParameterMode }),

@@ -25,12 +25,42 @@ pub fn text_to_ledger_test() {
       ]),
     ),
     #(
-      "{var1}text1{var2}text",
+      "{var1}text1{var2}text2",
       Ok([
         template.Variable("var1", []),
         template.Literal("text1"),
         template.Variable("var2", []),
         template.Literal("text2"),
+      ]),
+    ),
+    #(
+      "{var1|mod}",
+      Ok([
+        template.Variable("var1", [template.Mod("mod", [])]),
+      ]),
+    ),
+    #(
+      "{var1|mod(p)}",
+      Ok([
+        template.Variable("var1", [template.Mod("mod", ["p"])]),
+      ]),
+    ),
+    #(
+      "{var1|mod(p )}",
+      Ok([
+        template.Variable("var1", [template.Mod("mod", ["p "])]),
+      ]),
+    ),
+    #(
+      "{var1|mod( p, x )}",
+      Ok([
+        template.Variable("var1", [template.Mod("mod", [" p", " x "])]),
+      ]),
+    ),
+    #(
+      "{var1|mod( p, x\\, )}",
+      Ok([
+        template.Variable("var1", [template.Mod("mod", [" p", " x\\, "])]),
       ]),
     ),
   ]
