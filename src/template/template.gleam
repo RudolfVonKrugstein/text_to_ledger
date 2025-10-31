@@ -1,3 +1,6 @@
+import gleam/list
+import gleam/string
+
 /// A template is rendered using variables extracted using regexes into a string.
 ///
 /// Normaly one would get a template by parsing a template string.
@@ -23,5 +26,17 @@ pub type TemplateMod {
     name: String,
     /// Parameters of the modifications.
     parameters: List(String),
+  )
+}
+
+/// Render the template into a string using variables from regex capture groups.
+pub fn render(temp: Template, vars: List(#(String, List(String)))) {
+  string.concat(
+    list.map(temp.parts, fn(part) {
+      case part {
+        Literal(t) -> t
+        Variable(name:, mods:) -> ""
+      }
+    }),
   )
 }
