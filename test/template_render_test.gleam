@@ -22,3 +22,14 @@ pub fn two_literals_template_render_test() {
   // test
   should.equal(result, "test2")
 }
+
+pub fn single_var_template_render_test() {
+  // setup
+  let input = Template([template.Variable("test", [])])
+
+  // act
+  let result = template.render(input, [#("test", ["val"])])
+
+  // test
+  should.equal(result, "val")
+}
