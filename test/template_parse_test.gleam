@@ -6,7 +6,7 @@ import template/template
 pub fn template_parse_ok_test() {
   let cases = [
     #("hello", [template.Literal("hello")]),
-    #("hello\\{", [template.Literal("hello\\{")]),
+    #("hello\\{", [template.Literal("hello{")]),
     #("hello{var}", [template.Literal("hello"), template.Variable("var", [])]),
     #("hello{var}good \\nbye", [
       template.Literal("hello"),
