@@ -33,3 +33,36 @@ pub fn single_var_template_render_test() {
   // test
   should.equal(result, Ok("val"))
 }
+
+pub fn same_mod_render_test() {
+  // setup
+  let input = Template([template.Variable("test", [template.Mod("same", [])])])
+
+  // act
+  let result = template.render(input, [#("test", ["val"])])
+
+  // test
+  should.equal(result, Ok("val"))
+}
+
+pub fn same_mod_multi_var_render_test() {
+  // setup
+  let input = Template([template.Variable("test", [template.Mod("same", [])])])
+
+  // act
+  let result = template.render(input, [#("test", ["val", "val"])])
+
+  // test
+  should.equal(result, Ok("val"))
+}
+
+pub fn same_mod_multi_var_render_fail_test() {
+  // setup
+  let input = Template([template.Variable("test", [template.Mod("same", [])])])
+
+  // act
+  let result = template.render(input, [#("test", ["val", "val2"])])
+
+  // test
+  should.be_error(result)
+}
