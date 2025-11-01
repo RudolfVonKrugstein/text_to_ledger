@@ -66,3 +66,15 @@ pub fn same_mod_multi_var_render_fail_test() {
   // test
   should.be_error(result)
 }
+
+pub fn same_mod_parameter_render_fail_test() {
+  // setup
+  let input =
+    Template([template.Variable("test", [template.Mod("same", ["para"])])])
+
+  // act
+  let result = template.render(input, [#("test", ["val", "val2"])])
+
+  // test
+  should.be_error(result)
+}
