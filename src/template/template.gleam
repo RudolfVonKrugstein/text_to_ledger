@@ -35,8 +35,49 @@ pub type TemplateMod {
 fn find_var(name: String, vars: List(#(String, List(String)))) {
   case vars {
     [#(fname, flist), ..] if fname == name -> Some(flist)
-    [f, ..r] -> find_var(name, r)
+    [_, ..r] -> find_var(name, r)
     _ -> None
+  }
+}
+
+/// Apply the "same" mod to a variable
+fn apply_same_mod(values: List(String), parameters: List(String)) {
+  case parameters {
+    [] ->
+      case values {
+        [] -> Ok([])
+        [a] -> Ok([a])
+        [a, b, ..cs] if a == b -> apply_same_mod([b, ..cs], parameters)
+        [a, b, ..] ->
+          Error(
+            "same mod applied, but not all captures values are the same: "
+            <> a
+            <> " != "
+            <> b,
+          )
+      }
+    _ -> Error("same mod takes no parameters")
+  }
+}
+
+/// Apply a mod to a variable
+fn apply_mod(values: List(String), mod: String, parameters: List(String)) {
+  case mod {
+    "same" -> {
+      apply_same_mod(values, parameters)
+    }
+    _ -> Error("unkown mod: " <> mod)
+  }
+}
+
+/// Apply list of mods to a variable
+fn apply_mods(values: List(String), mods: List(TemplateMod)) {
+  case mods {
+    [] -> Ok(values)
+    [Mod(name, parameters), ..mods] -> {
+      use values <- result.try(apply_mod(values, name, parameters))
+      apply_mods(values, mods)
+    }
   }
 }
 
@@ -49,6 +90,8 @@ fn render_variable(
   use values <- result.try(
     find_var(name, vars) |> option.to_result("unable to find variable " <> name),
   )
+
+  use values <- result.try(apply_mods(values, mods))
 
   use value <- result.try(
     list.first(values) |> result.map_error(fn(_) { name <> " has not matches" }),
