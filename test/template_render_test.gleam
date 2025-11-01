@@ -9,7 +9,7 @@ pub fn simple_template_render_test() {
   let result = template.render(input, [])
 
   // test
-  should.equal(result, "test")
+  should.equal(result, Ok("test"))
 }
 
 pub fn two_literals_template_render_test() {
@@ -20,7 +20,7 @@ pub fn two_literals_template_render_test() {
   let result = template.render(input, [])
 
   // test
-  should.equal(result, "test2")
+  should.equal(result, Ok("test2"))
 }
 
 pub fn single_var_template_render_test() {
@@ -31,5 +31,5 @@ pub fn single_var_template_render_test() {
   let result = template.render(input, [#("test", ["val"])])
 
   // test
-  should.equal(result, "val")
+  should.equal(result, Ok("val"))
 }
