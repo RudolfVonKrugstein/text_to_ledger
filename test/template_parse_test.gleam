@@ -44,9 +44,9 @@ pub fn template_parse_ok_test() {
 
   use #(input, expected) <- list.map(cases)
 
-  let result = parser.run(input)
+  let assert Ok(result) = parser.run(input)
 
-  should.equal(result, Ok(expected))
+  should.equal(result.parts, expected)
 }
 
 pub fn templeta_parse_fail_test() {

@@ -107,12 +107,16 @@ fn parameter() {
 }
 
 /// Run the parser on an input string.
-pub fn run(input: String) {
+pub fn run(input: String) -> Result(template.Template, error.Error) {
   use tokens <- result.try(
     lexer.run(input) |> result.map_error(error.LexerError),
   )
 
   let parser = nibble.many(nibble.one_of([variable(), text()]))
 
-  nibble.run(tokens, parser) |> result.map_error(error.ParseError)
+  use parts <- result.try(
+    nibble.run(tokens, parser) |> result.map_error(error.ParseError),
+  )
+
+  Ok(template.Template(parts:))
 }

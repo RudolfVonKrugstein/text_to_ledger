@@ -1,4 +1,6 @@
+import data/bank_statement
 import data/bank_transaction
+import data/extractor
 import data/money
 import gleam/list
 import gleam/option.{Some}
@@ -55,25 +57,25 @@ pub fn data_extraction_test() {
       "^[0-9]{1,2})\\. [0-9]{1,2} [^\\n]+ [0-9]+\\.[0-9] [HS]$",
       regexp.Options(False, False),
     )
-  let assert Ok(after_trans_regex) =
+  let assert Ok(end_trans_regex) =
     regexp.compile("\\n\\n", regexp.Options(False, True))
 
   let assert Ok(bs_template) =
-    bank_statement.render_template(
+    bank_statement.parse_template(
       regexes: bs_regexes,
       bank: Some("CoolBank"),
       account: Some("{an}"),
-      start_date: Some("{sa_sign|r(H,+)|r(S,-)}{sa_big}.{sa_small}"),
-      end_date: Some("{fa_sign|r(H,+)|r(S,-)}{fa_big}.{fa_small}"),
-      start_amount: Some("{sd} EUR"),
-      end_amount: Some("{fd} EUR"),
+      starts_at: Some("{sa_sign|r(H,+)|r(S,-)}{sa_big}.{sa_small}"),
+      ends_at: Some("{fa_sign|r(H,+)|r(S,-)}{fa_big}.{fa_small}"),
+      starts_with: Some("{sd} EUR"),
+      ends_with: Some("{fd} EUR"),
     )
 
   let assert Ok(trans_template) =
-    bank_transaction.render_template(
+    bank_transaction.parse_template(
       regexes: trans_regexes,
-      start_regex: bank_transaction.StartWith(start_trans_regex),
-      end_regex: bank_transaction.EndBefore(end_trans_tegex),
+      start: bank_transaction.BeginWith(start_trans_regex),
+      end: bank_transaction.EndBefore(end_trans_regex),
       booking_date: Some("{bd}"),
       execution_date: "{bd}",
       amount: "{a_sign|r(H,+)|r(S,-)}{a_big}.{a_small} EUR",
@@ -82,21 +84,21 @@ pub fn data_extraction_test() {
 
   // Act
   let #(statement, transactions) =
-    extractor.extract_bank_statement_data(bs_template, trans_template)
+    extractor.extract_bank_statement_data(input, bs_template, trans_template)
 
   // Test
   should.equal(
     statement,
-    BankStatement(
+    bank_statement.BankStatement(
       bank: Some("CoolBank"),
       account: Some("DE12456"),
       start_date: Some(calendar.Date(1, calendar.December, 2025)),
-      start_date: Some(calendar.Date(31, calendar.December, 2025)),
+      end_date: Some(calendar.Date(31, calendar.December, 2025)),
       start_amount: Some(money.Money(225, "EUR")),
       end_amount: Some(money.Money(-200, "EUR")),
     ),
   )
-  should.equal(statement, [
+  should.equal(transactions, [
     bank_transaction.BankTransaction(
       subject: "Transaction 1Detail",
       amount: money.Money(-25, "EUR"),
