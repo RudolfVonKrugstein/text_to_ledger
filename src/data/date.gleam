@@ -13,12 +13,17 @@ pub type Date {
 }
 
 /// A date, where not all information is available (like "5.12").
-pub type PartialDate {
+pub type PartialDateWithDay {
   OnlyDay(day: Int)
-  DayAndMonth(month: Int, day: Int)
-  MonthAndYear(year: Int, month: Int)
+  WithDayAndMonth(month: Int, day: Int)
+  WithDayFullDate(date: Date)
+}
+
+/// A date, where not all information is available (like "5.12").
+pub type PartialDateWithYear {
   OnlyYear(year: Int)
-  FullDate(date: Date)
+  WithYearAndMonth(month: Int, day: Int)
+  WithYearFullDate(date: Date)
 }
 
 /// The order, in which the elements of a date can be for parsing.
@@ -135,64 +140,61 @@ pub fn parse_full_date(
   }
 }
 
-/// For parsing partial dates, in case of ambiguity, which values are given
-/// and which not.
-pub type PartialDateParseAssumption {
-  /// The day is definitily present
-  WithDay
-  /// The year is definitily present
-  WithYear
-}
-
 /// Parse a partial date, resulting in a date with not all information
-/// filled (see the `PartialDate` type).
+/// filled, but assume the year is always present (see the `PartialDateWithYear` type).
 ///
 /// # Arguments:
 /// - `text`: The text to parse.
-/// - `assumption`: The assumption, deciding if on case of not all 3 parts of the date present,
-///                 if it should be parsed that the day or the year is present for sure.
 /// - `seperator` is the symbol, between the elements of the date.
 /// - `order` is the order, in which the date is expected.
-pub fn parse_partial_date(
+pub fn parse_partial_date_with_year(
   text: String,
   seperator: String,
-  assumption: PartialDateParseAssumption,
   order: ParseDateOrder,
-) -> Result(PartialDate, String) {
+) -> Result(PartialDateWithYear, String) {
   case string.split(text, seperator) {
-    [one] | [one, ""] -> {
-      case assumption {
-        WithDay -> {
-          parse_day(one) |> result.map(OnlyDay)
-        }
-        WithYear -> {
-          parse_year(one) |> result.map(OnlyYear)
-        }
-      }
-    }
+    [one] | [one, ""] -> parse_year(one) |> result.map(OnlyYear)
     [one, two] | [one, two, ""] -> {
-      case assumption {
-        WithDay -> {
-          let #(month, day) = canonical_date_order_month_day(one, two, order)
+      let #(year, month) = canonical_date_order_year_month(one, two, order)
 
-          use month <- result.try(parse_month(month))
-          use day <- result.try(parse_day(day))
+      use month <- result.try(parse_month(month))
+      use year <- result.try(parse_year(year))
 
-          Ok(DayAndMonth(month, day))
-        }
-        WithYear -> {
-          let #(year, month) = canonical_date_order_year_month(one, two, order)
-
-          use month <- result.try(parse_month(month))
-          use year <- result.try(parse_year(year))
-
-          Ok(MonthAndYear(year, month))
-        }
-      }
+      Ok(WithYearAndMonth(year, month))
     }
     [_, _, _] -> {
       use date <- result.try(parse_full_date(text, seperator, order))
-      Ok(FullDate(date))
+      Ok(WithYearFullDate(date))
+    }
+    _ -> Error("unable to parse partial date: " <> text)
+  }
+}
+
+/// Parse a partial date, resulting in a date with not all information
+/// filled, but assume the day is alwasy present (see the `PartialDateWithDay` type).
+///
+/// # Arguments:
+/// - `text`: The text to parse.
+/// - `seperator` is the symbol, between the elements of the date.
+/// - `order` is the order, in which the date is expected.
+pub fn parse_partial_date_with_day(
+  text: String,
+  seperator: String,
+  order: ParseDateOrder,
+) -> Result(PartialDateWithDay, String) {
+  case string.split(text, seperator) {
+    [one] | [one, ""] -> parse_day(one) |> result.map(OnlyDay)
+    [one, two] | [one, two, ""] -> {
+      let #(month, day) = canonical_date_order_month_day(one, two, order)
+
+      use month <- result.try(parse_month(month))
+      use day <- result.try(parse_day(day))
+
+      Ok(WithDayAndMonth(month, day))
+    }
+    [_, _, _] -> {
+      use date <- result.try(parse_full_date(text, seperator, order))
+      Ok(WithDayFullDate(date))
     }
     _ -> Error("unable to parse partial date: " <> text)
   }
