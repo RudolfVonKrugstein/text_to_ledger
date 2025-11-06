@@ -1,3 +1,4 @@
+import gleam/dict
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/result
@@ -31,13 +32,12 @@ pub type TemplateMod {
   )
 }
 
+pub type Vars =
+  dict.Dict(String, List(String))
+
 /// Find an input variable from a list.
-fn find_var(name: String, vars: List(#(String, List(String)))) {
-  case vars {
-    [#(fname, flist), ..] if fname == name -> Some(flist)
-    [_, ..r] -> find_var(name, r)
-    _ -> None
-  }
+fn find_var(name: String, vars: Vars) {
+  dict.get(vars, name) |> option.from_result
 }
 
 /// Apply the "same" mod to a variable
@@ -82,11 +82,7 @@ fn apply_mods(values: List(String), mods: List(TemplateMod)) {
 }
 
 /// Render a variable into a string.
-fn render_variable(
-  name: String,
-  mods: List(TemplateMod),
-  vars: List(#(String, List(String))),
-) {
+fn render_variable(name: String, mods: List(TemplateMod), vars: Vars) {
   use values <- result.try(
     find_var(name, vars) |> option.to_result("unable to find variable " <> name),
   )
@@ -101,7 +97,7 @@ fn render_variable(
 }
 
 /// Render the template into a string using variables from regex capture groups.
-pub fn render(temp: Template, vars: List(#(String, List(String)))) {
+pub fn render(temp: Template, vars: Vars) {
   use parts <- result.try(
     result.all(
       list.map(temp.parts, fn(part) {

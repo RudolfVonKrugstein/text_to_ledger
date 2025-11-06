@@ -1,6 +1,10 @@
 import data/money.{type Money}
-import gleam/option.{type Option}
+import gleam/option.{type Option, None, Some}
+import gleam/regexp
+import gleam/result
 import gleam/time/calendar
+import template/parser/parser
+import template/template
 
 /// A bank statement extracted from the input data.
 ///
@@ -8,6 +12,10 @@ import gleam/time/calendar
 /// If it is present it is used for sanity checks aand completing the transaction data.
 pub type BankStatement {
   BankStatement(
+    /// The Bank the statement is from
+    bank: Option(String),
+    /// The account the statement is for
+    account: String,
     /// If this and end_date is present, it is checked if:
     /// * All transactions are inside the time range of there bank statements.
     /// * There is a continous list of bank statements, where the next start_date is the last ones end_date.
@@ -25,4 +33,60 @@ pub type BankStatement {
     /// Used for sanity checks and completing the transaction data.
     end_amount: Option(Money),
   )
+}
+
+/// Template for extracting bank statement data.
+pub type BankStatementTemplate {
+  BankStatementTemplate(
+    regexes: List(regexp.Regexp),
+    bank: Option(template.Template),
+    account: template.Template,
+    start_date: Option(template.Template),
+    end_date: Option(template.Template),
+    start_amount: Option(template.Template),
+    end_amount: Option(template.Template),
+  )
+}
+
+pub fn parse_template(
+  regexes regexes: List(regexp.Regexp),
+  bank bank: Option(String),
+  account account: String,
+  starts_at start_date: Option(String),
+  ends_at end_date: Option(String),
+  starts_with start_amount: Option(String),
+  ends_with end_amount: Option(String),
+) {
+  use bank <- result.try(case bank {
+    None -> Ok(None)
+    Some(bank) -> parser.run(bank) |> result.map(Some)
+  })
+  use account <- result.try(parser.run(account))
+
+  use start_date <- result.try(case start_date {
+    None -> Ok(None)
+    Some(start_date) -> parser.run(start_date) |> result.map(Some)
+  })
+  use end_date <- result.try(case end_date {
+    None -> Ok(None)
+    Some(end_date) -> parser.run(end_date) |> result.map(Some)
+  })
+  use start_amount <- result.try(case start_amount {
+    None -> Ok(None)
+    Some(start_amount) -> parser.run(start_amount) |> result.map(Some)
+  })
+  use end_amount <- result.try(case end_amount {
+    None -> Ok(None)
+    Some(end_amount) -> parser.run(end_amount) |> result.map(Some)
+  })
+
+  Ok(BankStatementTemplate(
+    regexes:,
+    bank:,
+    account:,
+    start_date:,
+    end_date:,
+    start_amount:,
+    end_amount:,
+  ))
 }
