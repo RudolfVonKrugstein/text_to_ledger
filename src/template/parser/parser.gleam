@@ -93,7 +93,7 @@ fn parameters() {
 /// Parse a single modification parameter.
 fn parameter() {
   use ts <- nibble.do(
-    nibble.take_map_while1("parameter", fn(t) {
+    nibble.take_map_while(fn(t) {
       case t {
         lexer.ParameterToken(p) -> Some(p)
         lexer.EscapedParameterToken(p) -> Some(unescape(p))

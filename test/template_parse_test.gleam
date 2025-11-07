@@ -22,6 +22,9 @@ pub fn template_parse_ok_test() {
     #("{var1|mod}", [
       template.Variable("var1", [template.Mod("mod", [])]),
     ]),
+    #("{var1|mod()}", [
+      template.Variable("var1", [template.Mod("mod", [""])]),
+    ]),
     #("{var1|mod(p)}", [
       template.Variable("var1", [template.Mod("mod", ["p"])]),
     ]),
@@ -39,6 +42,12 @@ pub fn template_parse_ok_test() {
         template.Mod("mod", [" p", " x, "]),
         template.Mod("mod2", [" )} "]),
       ]),
+    ]),
+    #("{var1|mod(, )}", [
+      template.Variable("var1", [template.Mod("mod", ["", " "])]),
+    ]),
+    #("{var1|mod( ,)}", [
+      template.Variable("var1", [template.Mod("mod", [" ", ""])]),
     ]),
   ]
 
