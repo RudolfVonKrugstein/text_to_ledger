@@ -1,5 +1,6 @@
-import gleam/option.{type Option}
+import gleam/option.{type Option, None, Some}
 import gleam/regexp
+import gleam/string
 
 pub type NamedCapture {
   NamedCapture(name: String, value: String)
@@ -45,9 +46,43 @@ pub fn split_match(
   over subject: String,
 ) -> Option(#(String, String, String))
 
+pub fn split_after_all(with regex: regexp.Regexp, over subject: String) {
+  case split_after(regex, subject) {
+    None -> [subject]
+    Some(#("", rest)) -> {
+      case string.pop_grapheme(rest) {
+        Error(_) -> []
+        Ok(#(s, rest)) -> [s, ..split_after_all(regex, rest)]
+      }
+    }
+    Some(#(before, "")) -> [before]
+    Some(#(before, rest)) -> [before, ..split_after_all(regex, rest)]
+  }
+}
+
+pub fn split_before_all(with regex: regexp.Regexp, over subject: String) {
+  case split_match(regex, subject) {
+    None -> [subject]
+    Some(#("", "", rest)) -> {
+      case string.pop_grapheme(rest) {
+        Error(_) -> []
+        Ok(#(s, rest)) -> [s, ..split_after_all(regex, rest)]
+      }
+    }
+    Some(#(before, "", "")) -> [before]
+    Some(#(before, match, "")) -> [before, match]
+    Some(#(before, match, rest)) -> {
+      case split_before_all(regex, rest) {
+        [] -> [before, match]
+        [next, ..rest] -> [before, match <> next, ..rest]
+      }
+    }
+  }
+}
+
 pub type SplitRegex {
-  SplitBefore(regexp.Regexp)
-  SplitAfter(regexp.Regexp)
+  SplitBefore(regex: regexp.Regexp)
+  SplitAfter(regex: regexp.Regexp)
 }
 
 pub fn split(
@@ -57,5 +92,12 @@ pub fn split(
   case regex {
     SplitBefore(regex) -> split_before(regex, subject)
     SplitAfter(regex) -> split_after(regex, subject)
+  }
+}
+
+pub fn split_all(with regex: SplitRegex, over subject: String) -> List(String) {
+  case regex {
+    SplitBefore(regex) -> split_before_all(regex, subject)
+    SplitAfter(regex) -> split_after_all(regex, subject)
   }
 }

@@ -66,3 +66,33 @@ pub fn string_split_match_test() {
     should.equal(regexp_ext.split_match(regex, text), expected)
   })
 }
+
+pub fn string_split_after_all_test() {
+  let cases = [
+    #("\\|", "hello|bye", ["hello|", "bye"]),
+    #("\\|", "|bye", ["|", "bye"]),
+    #("\\|", "hello|", ["hello|"]),
+  ]
+
+  list.each(cases, fn(c) {
+    let #(regex, text, expected) = c
+
+    let assert Ok(regex) = regexp.compile(regex, regexp.Options(True, True))
+    should.equal(regexp_ext.split_after_all(regex, text), expected)
+  })
+}
+
+pub fn string_split_before_all_test() {
+  let cases = [
+    #("\\|", "hello|bye", ["hello", "|bye"]),
+    #("\\|", "|bye", ["", "|bye"]),
+    #("\\|", "hello|", ["hello", "|"]),
+  ]
+
+  list.each(cases, fn(c) {
+    let #(regex, text, expected) = c
+
+    let assert Ok(regex) = regexp.compile(regex, regexp.Options(True, True))
+    should.equal(regexp_ext.split_before_all(regex, text), expected)
+  })
+}
