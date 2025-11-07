@@ -35,6 +35,21 @@ pub type TemplateMod {
 pub type Vars =
   dict.Dict(String, List(String))
 
+/// New, empty vars
+pub fn empty_vars() {
+  dict.new()
+}
+
+/// Add a variable value
+pub fn add_to_vars(vars: Vars, key: String, value: String) {
+  dict.upsert(vars, key, fn(values) {
+    case values {
+      None -> [value]
+      Some(values) -> list.append(values, [value])
+    }
+  })
+}
+
 /// Find an input variable from a list.
 fn find_var(name: String, vars: Vars) {
   dict.get(vars, name) |> option.from_result
@@ -60,12 +75,30 @@ fn apply_same_mod(values: List(String), parameters: List(String)) {
   }
 }
 
+/// Apply the "replace" mod to a variable
+fn apply_replace_mod(values: List(String), parameters: List(String)) {
+  case parameters {
+    [orig, replace] ->
+      Ok(list.map(values, fn(v) { string.replace(v, orig, replace) }))
+    _ -> Error("replace mod takes 2 parameters")
+  }
+}
+
+/// Apply the "concat" mod to a variable
+fn apply_concat_mod(values: List(String), parameters: List(String)) {
+  case parameters {
+    [] -> apply_concat_mod(values, [""])
+    [sep] -> Ok([string.join(values, sep)])
+    _ -> Error("concat mod takes 1 parameter")
+  }
+}
+
 /// Apply a mod to a variable
 fn apply_mod(values: List(String), mod: String, parameters: List(String)) {
   case mod {
-    "same" -> {
-      apply_same_mod(values, parameters)
-    }
+    "same" -> apply_same_mod(values, parameters)
+    "replace" | "r" -> apply_replace_mod(values, parameters)
+    "concat" | "c" -> apply_concat_mod(values, parameters)
     _ -> Error("unkown mod: " <> mod)
   }
 }

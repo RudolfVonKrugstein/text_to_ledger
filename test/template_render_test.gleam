@@ -82,3 +82,29 @@ pub fn same_mod_parameter_render_fail_test() {
   // test
   should.be_error(result)
 }
+
+pub fn replace_mod_render_test() {
+  // setup
+  let input =
+    Template([template.Variable("test", [template.Mod("replace", ["v", "V"])])])
+
+  // act
+  let result =
+    template.render(input, dict.from_list([#("test", ["val", "val"])]))
+
+  // test
+  should.equal(result, Ok("Val"))
+}
+
+pub fn replace_mod_concat_test() {
+  // setup
+  let input =
+    Template([template.Variable("test", [template.Mod("concat", ["-"])])])
+
+  // act
+  let result =
+    template.render(input, dict.from_list([#("test", ["one", "two"])]))
+
+  // test
+  should.equal(result, Ok("one-two"))
+}
