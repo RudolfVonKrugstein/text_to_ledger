@@ -33,7 +33,7 @@ split_after(Regex, Subject) ->
     {match, [{Start,Len}]} ->
       <<Before:(Start+Len)/binary, After/binary>> = Subject,
       {some, {unicode:characters_to_binary(Before), unicode:characters_to_binary(After)}};
-    nomatch -> {none}
+    nomatch -> none
   end.
 
 split_before(Regex, Subject) ->
@@ -41,5 +41,5 @@ split_before(Regex, Subject) ->
     {match, [{Start,_}]} ->
       <<Before:(Start)/binary, After/binary>> = Subject,
       {some, {unicode:characters_to_binary(Before), unicode:characters_to_binary(After)}};
-    nomatch -> {none}
+    nomatch -> none
   end.

@@ -1,4 +1,4 @@
-import gleam/option
+import gleam/option.{type Option}
 import gleam/regexp
 
 pub type NamedCapture {
@@ -17,7 +17,7 @@ pub type NamedCapture {
 @external(erlang, "regexp_ext_ffi", "capture_names")
 @external(javascript, "../regexp_ext_ffi.mjs", "capture_names")
 pub fn capture_names(
-  regex regex: regexp.Regexp,
+  with regex: regexp.Regexp,
   over subject: String,
 ) -> List(List(NamedCapture))
 
@@ -25,14 +25,29 @@ pub fn capture_names(
 @external(erlang, "regexp_ext_ffi", "split_after")
 @external(javascript, "../regexp_ext_ffi.mjs", "split_after")
 pub fn split_after(
-  regex regex: regexp.Regexp,
+  with regex: regexp.Regexp,
   over subject: String,
-) -> option.Option(#(String, String))
+) -> Option(#(String, String))
 
 /// Split a string before the first time the regex matches.
 @external(erlang, "regexp_ext_ffi", "split_before")
 @external(javascript, "../regexp_ext_ffi.mjs", "split_before")
 pub fn split_before(
-  regex regex: regexp.Regexp,
+  with regex: regexp.Regexp,
   over subject: String,
-) -> option.Option(#(String, String))
+) -> Option(#(String, String))
+
+pub type SplitRegex {
+  SplitBefore(regexp.Regexp)
+  SplitAfter(regexp.Regexp)
+}
+
+pub fn split(
+  with regex: SplitRegex,
+  over subject: String,
+) -> Option(#(String, String)) {
+  case regex {
+    SplitBefore(regex) -> split_before(regex, subject)
+    SplitAfter(regex) -> split_after(regex, subject)
+  }
+}
