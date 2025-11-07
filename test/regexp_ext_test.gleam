@@ -1,5 +1,5 @@
 import gleam/list
-import gleam/option.{Some}
+import gleam/option.{None, Some}
 import gleam/regexp
 import gleeunit/should
 import regexp_ext/regexp_ext.{NamedCapture}
@@ -26,7 +26,10 @@ pub fn capture_names_test() {
 }
 
 pub fn string_split_after_test() {
-  let cases = [#("ab", "helloabbye", Some(#("helloab", "bye")))]
+  let cases = [
+    #("ab", "helloabbye", Some(#("helloab", "bye"))),
+    #("ab", "hellobye", None),
+  ]
 
   list.each(cases, fn(c) {
     let #(regex, text, expected) = c
@@ -37,12 +40,29 @@ pub fn string_split_after_test() {
 }
 
 pub fn string_split_before_test() {
-  let cases = [#("ab", "helloabbye", Some(#("hello", "abbye")))]
+  let cases = [
+    #("ab", "helloabbye", Some(#("hello", "abbye"))),
+    #("ab", "hellobye", None),
+  ]
 
   list.each(cases, fn(c) {
     let #(regex, text, expected) = c
 
     let assert Ok(regex) = regexp.compile(regex, regexp.Options(True, True))
     should.equal(regexp_ext.split_before(regex, text), expected)
+  })
+}
+
+pub fn string_split_match_test() {
+  let cases = [
+    #("ab", "helloabbye", Some(#("hello", "ab", "bye"))),
+    #("ab", "hellobye", None),
+  ]
+
+  list.each(cases, fn(c) {
+    let #(regex, text, expected) = c
+
+    let assert Ok(regex) = regexp.compile(regex, regexp.Options(True, True))
+    should.equal(regexp_ext.split_match(regex, text), expected)
   })
 }

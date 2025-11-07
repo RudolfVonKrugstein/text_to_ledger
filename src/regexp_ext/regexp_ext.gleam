@@ -37,6 +37,14 @@ pub fn split_before(
   over subject: String,
 ) -> Option(#(String, String))
 
+/// Split a string returning before, the match and after
+@external(erlang, "regexp_ext_ffi", "split_match")
+@external(javascript, "../regexp_ext_ffi.mjs", "split_match")
+pub fn split_match(
+  with regex: regexp.Regexp,
+  over subject: String,
+) -> Option(#(String, String, String))
+
 pub type SplitRegex {
   SplitBefore(regexp.Regexp)
   SplitAfter(regexp.Regexp)

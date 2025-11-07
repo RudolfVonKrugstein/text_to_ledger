@@ -41,3 +41,17 @@ export function split_before(regex, string) {
   }
   return new None()
 }
+
+export function split_match(regex, string) {
+  regex.lastIndex = 0;
+  const match = regex.exec(string);
+  if (match) {
+    const matchBegin = match.index;
+    const matchEnd = match.index + match[0].length;
+    const before = string.slice(0, matchBegin);
+    const match_middle = string.slice(matchBegin, matchEnd)
+    const after = string.slice(matchEnd);
+    return new Some([before, match_middle, after])
+  }
+  return new None()
+}

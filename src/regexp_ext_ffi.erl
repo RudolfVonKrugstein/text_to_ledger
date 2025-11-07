@@ -1,6 +1,6 @@
 -module(regexp_ext_ffi).
 
--export([capture_names/2, split_before/2, split_after/2]).
+-export([capture_names/2, split_before/2, split_after/2, split_match/2]).
 
 names(Regex) ->
     {namelist, List} = re:inspect(Regex, namelist),
@@ -36,10 +36,22 @@ split_after(Regex, Subject) ->
     nomatch -> none
   end.
 
+
 split_before(Regex, Subject) ->
   case re:run(Subject, Regex, [{capture, first, index}]) of
     {match, [{Start,_}]} ->
       <<Before:(Start)/binary, After/binary>> = Subject,
       {some, {unicode:characters_to_binary(Before), unicode:characters_to_binary(After)}};
+    nomatch -> none
+  end.
+
+split_match(Regex, Subject) ->
+  case re:run(Subject, Regex, [{capture, first, index}]) of
+    {match, [{Start,Len}]} ->
+      <<Before:(Start)/binary, Match:(Len)/binary, After/binary>> = Subject,
+      {some, {unicode:characters_to_binary(Before),
+              unicode:characters_to_binary(Match),
+              unicode:characters_to_binary(After)
+             }};
     nomatch -> none
   end.
