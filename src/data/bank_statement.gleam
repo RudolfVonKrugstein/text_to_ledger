@@ -1,8 +1,8 @@
+import data/date
 import data/money.{type Money}
 import gleam/option.{type Option, None, Some}
 import gleam/regexp
 import gleam/result
-import gleam/time/calendar
 import template/parser/parser
 import template/template
 
@@ -21,9 +21,9 @@ pub type BankStatement {
     /// * There is a continous list of bank statements, where the next start_date is the last ones end_date.
     ///
     /// Also when present it can complete the date data of the transactions as `bs_start_date_month` and `bs_start_date_year`.
-    start_date: Option(calendar.Date),
+    start_date: Option(date.Date),
     /// See start_date.
-    end_date: Option(calendar.Date),
+    end_date: Option(date.Date),
     /// The start amount for the bank statement.
     ///
     /// Used for sanity checks and completing the transaction data.

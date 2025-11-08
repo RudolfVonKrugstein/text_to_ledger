@@ -1,8 +1,9 @@
+import data/date
 import data/money.{type Money}
 import gleam/option.{type Option, None, Some}
 import gleam/regexp.{type Regexp}
 import gleam/result
-import gleam/time/calendar
+import regexp_ext/regexp_ext
 import template/parser/parser
 import template/template
 
@@ -11,8 +12,8 @@ pub type BankTransaction {
   BankTransaction(
     subject: String,
     amount: Money,
-    booking_date: Option(calendar.Date),
-    execution_date: calendar.Date,
+    booking_date: Option(date.Date),
+    execution_date: date.Date,
   )
 }
 
@@ -20,8 +21,8 @@ pub type BankTransaction {
 pub type BankTransactionTemplate {
   BankTransactionTemplate(
     regexes: List(Regexp),
-    start_regex: StartRegex,
-    end_regex: EndRegex,
+    start_regex: regexp_ext.SplitRegex,
+    end_regex: regexp_ext.SplitRegex,
     subject: template.Template,
     amount: template.Template,
     book_date: Option(template.Template),
@@ -29,20 +30,10 @@ pub type BankTransactionTemplate {
   )
 }
 
-pub type StartRegex {
-  BeginWith(regexp.Regexp)
-  BeginAfter(regexp.Regexp)
-}
-
-pub type EndRegex {
-  EndBefore(regexp.Regexp)
-  EndWith(regexp.Regexp)
-}
-
 pub fn parse_template(
   regexes regexes: List(Regexp),
-  start start_regex: StartRegex,
-  end end_regex: EndRegex,
+  start start_regex: regexp_ext.SplitRegex,
+  end end_regex: regexp_ext.SplitRegex,
   subject subject: String,
   amount amount: String,
   booking_date booking_date: Option(String),
