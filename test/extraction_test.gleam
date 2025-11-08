@@ -94,8 +94,8 @@ End
       account: "DE12456",
       start_date: Some(date.Date(2025, 12, 1)),
       end_date: Some(date.Date(2025, 12, 31)),
-      start_amount: Some(money.Money(225, "EUR")),
-      end_amount: Some(money.Money(-200, "EUR")),
+      start_amount: Some(money.Money(225, 2, "EUR")),
+      end_amount: Some(money.Money(-200, 2, "EUR")),
     ),
   )
 
@@ -104,7 +104,7 @@ End
     list.first(transactions),
     Ok(bank_transaction.BankTransaction(
       subject: "Transaction 1Details",
-      amount: money.Money(-25, "EUR"),
+      amount: money.Money(-25, 2, "EUR"),
       booking_date: Some(date.Date(2025, 12, 3)),
       execution_date: date.Date(2025, 12, 3),
     )),
@@ -113,7 +113,7 @@ End
     transactions |> list.drop(1) |> list.first,
     Ok(bank_transaction.BankTransaction(
       subject: "Transaction 2DetailsMore Details",
-      amount: money.Money(-200, "EUR"),
+      amount: money.Money(-200, 2, "EUR"),
       booking_date: Some(date.Date(2025, 12, 5)),
       execution_date: date.Date(2025, 12, 6),
     )),
@@ -122,7 +122,7 @@ End
     transactions |> list.drop(2) |> list.first,
     Ok(bank_transaction.BankTransaction(
       subject: "Transaction 3",
-      amount: money.Money(1, "EUR"),
+      amount: money.Money(1, 2, "EUR"),
       booking_date: Some(date.Date(2025, 12, 28)),
       execution_date: date.Date(2025, 12, 31),
     )),
@@ -131,7 +131,7 @@ End
     transactions |> list.drop(3) |> list.first,
     Ok(bank_transaction.BankTransaction(
       subject: "Transaction 4",
-      amount: money.Money(-201, "EUR"),
+      amount: money.Money(-201, 2, "EUR"),
       booking_date: Some(date.Date(2025, 12, 29)),
       execution_date: date.Date(2025, 12, 31),
     )),

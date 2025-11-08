@@ -8,6 +8,8 @@ pub type Money {
   Money(
     /// The amount in cents (or whatever thr small denomination of the currency is)
     amount: Int,
+    /// The position of the decimal, counted from thowest position
+    decimal_pos: Int,
     /// The Currency as a short string in uppercase letters (like EUR or USD)
     currency: String,
   )
@@ -46,17 +48,12 @@ pub fn parse_money(
       )
   })
 
-  use amount <- result.try(case decimal {
-    None -> Ok(amount)
+  use #(amount, decimal_pos) <- result.try(case decimal {
+    None -> Ok(#(amount, 0))
     Some(decimal) ->
       case string.split(amount, decimal) {
-        [amount] -> Ok(amount)
-        [amount, fraction] -> {
-          case string.length(fraction) {
-            2 -> Ok(amount <> fraction)
-            _ -> Error("invalid currency amount: " <> amount)
-          }
-        }
+        [amount] -> Ok(#(amount, 0))
+        [amount, fraction] -> Ok(#(amount <> fraction, string.length(fraction)))
         _ -> Error("invalid currency amount: " <> amount)
       }
   })
@@ -71,5 +68,5 @@ pub fn parse_money(
     |> result.map_error(fn(_) { "invalid currency amount: " <> text }),
   )
 
-  Ok(Money(amount, currency))
+  Ok(Money(amount:, decimal_pos:, currency:))
 }

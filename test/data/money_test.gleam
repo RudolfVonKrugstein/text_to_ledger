@@ -5,9 +5,9 @@ import gleeunit/should
 
 pub fn parse_money_test() {
   let cases = [
-    #("1,120.02 USD", Some("."), Some(","), Money(112_002, "USD")),
-    #("12.02 EUR", Some("."), None, Money(1202, "EUR")),
-    #("12 ITL", None, None, Money(12, "ITL")),
+    #("1,120.02 USD", Some("."), Some(","), Money(112_002, 2, "USD")),
+    #("12.02 EUR", Some("."), None, Money(1202, 2, "EUR")),
+    #("12 ITL", None, None, Money(12, 0, "ITL")),
   ]
 
   list.each(cases, fn(c) {
