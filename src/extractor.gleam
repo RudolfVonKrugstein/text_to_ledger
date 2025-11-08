@@ -141,16 +141,16 @@ fn extract_transaction_data(
 
   use subject <- result.try(template.render(trans_template.subject, trans_vars))
   use amount <- result.try(extract_money(trans_template.amount, trans_vars))
-  use booking_date <- result.try(
-    option_map_result(trans_template.book_date, extract_trans_date(
+  use execution_date <- result.try(
+    option_map_result(trans_template.exec_date, extract_trans_date(
       _,
       trans_vars,
       min_date,
       max_date,
     )),
   )
-  use execution_date <- result.try(extract_trans_date(
-    trans_template.exec_date,
+  use booking_date <- result.try(extract_trans_date(
+    trans_template.book_date,
     trans_vars,
     min_date,
     max_date,

@@ -76,8 +76,8 @@ End
       regexes: trans_regexes,
       start: regexp_ext.SplitBefore(start_trans_regex),
       end: regexp_ext.SplitBefore(end_trans_regex),
-      booking_date: Some("{bd}"),
-      execution_date: "{ed}",
+      booking_date: "{bd}",
+      execution_date: Some("{ed}"),
       amount: "{a_sign|r(H,+)|r(S,-)}{a_big}.{a_small} EUR",
       subject: "{line1|same}{lines|replace(\\n,)}",
     )
@@ -105,8 +105,8 @@ End
     Ok(bank_transaction.BankTransaction(
       subject: "Transaction 1Details",
       amount: money.Money(-25, 2, "EUR"),
-      booking_date: Some(date.Date(2025, 12, 3)),
-      execution_date: date.Date(2025, 12, 3),
+      booking_date: date.Date(2025, 12, 3),
+      execution_date: Some(date.Date(2025, 12, 3)),
     )),
   )
   should.equal(
@@ -114,8 +114,8 @@ End
     Ok(bank_transaction.BankTransaction(
       subject: "Transaction 2DetailsMore Details",
       amount: money.Money(-200, 2, "EUR"),
-      booking_date: Some(date.Date(2025, 12, 5)),
-      execution_date: date.Date(2025, 12, 6),
+      booking_date: date.Date(2025, 12, 5),
+      execution_date: Some(date.Date(2025, 12, 6)),
     )),
   )
   should.equal(
@@ -123,8 +123,8 @@ End
     Ok(bank_transaction.BankTransaction(
       subject: "Transaction 3",
       amount: money.Money(1, 2, "EUR"),
-      booking_date: Some(date.Date(2025, 12, 28)),
-      execution_date: date.Date(2025, 12, 31),
+      booking_date: date.Date(2025, 12, 28),
+      execution_date: Some(date.Date(2025, 12, 31)),
     )),
   )
   should.equal(
@@ -132,8 +132,8 @@ End
     Ok(bank_transaction.BankTransaction(
       subject: "Transaction 4",
       amount: money.Money(-201, 2, "EUR"),
-      booking_date: Some(date.Date(2025, 12, 29)),
-      execution_date: date.Date(2025, 12, 31),
+      booking_date: date.Date(2025, 12, 29),
+      execution_date: Some(date.Date(2025, 12, 31)),
     )),
   )
 }

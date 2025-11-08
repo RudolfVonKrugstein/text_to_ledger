@@ -1,8 +1,10 @@
 import data/date
 import data/money.{type Money}
+import gleam/dynamic/decode
 import gleam/option.{type Option, None, Some}
 import gleam/regexp
 import gleam/result
+import regexp_ext/regexp_ext
 import template/parser/parser
 import template/template
 
@@ -35,6 +37,39 @@ pub type BankStatement {
   )
 }
 
+pub fn bank_statement_decoder() -> decode.Decoder(BankStatement) {
+  use bank <- decode.optional_field(
+    "bank",
+    None,
+    decode.optional(decode.string),
+  )
+  use account <- decode.field("account", decode.string)
+  use start_date <- decode.field(
+    "start_date",
+    decode.optional(date.decode_full_date()),
+  )
+  use end_date <- decode.field(
+    "end_date",
+    decode.optional(date.decode_full_date()),
+  )
+  use start_amount <- decode.field(
+    "start_amount",
+    decode.optional(money.decode_money()),
+  )
+  use end_amount <- decode.field(
+    "end_amount",
+    decode.optional(money.decode_money()),
+  )
+  decode.success(BankStatement(
+    bank:,
+    account:,
+    start_date:,
+    end_date:,
+    start_amount:,
+    end_amount:,
+  ))
+}
+
 /// Template for extracting bank statement data.
 pub type BankStatementTemplate {
   BankStatementTemplate(
@@ -46,6 +81,39 @@ pub type BankStatementTemplate {
     start_amount: Option(template.Template),
     end_amount: Option(template.Template),
   )
+}
+
+pub fn bank_statement_template_decoder() -> decode.Decoder(
+  BankStatementTemplate,
+) {
+  use regexes <- decode.field("regexes", decode.list(regexp_ext.decode_regex()))
+  use bank <- decode.field("bank", decode.optional(parser.decode_template()))
+  use account <- decode.field("account", parser.decode_template())
+  use start_date <- decode.field(
+    "start_date",
+    decode.optional(parser.decode_template()),
+  )
+  use end_date <- decode.field(
+    "end_date",
+    decode.optional(parser.decode_template()),
+  )
+  use start_amount <- decode.field(
+    "start_amount",
+    decode.optional(parser.decode_template()),
+  )
+  use end_amount <- decode.field(
+    "end_amount",
+    decode.optional(parser.decode_template()),
+  )
+  decode.success(BankStatementTemplate(
+    regexes:,
+    bank:,
+    account:,
+    start_date:,
+    end_date:,
+    start_amount:,
+    end_amount:,
+  ))
 }
 
 pub fn parse_template(

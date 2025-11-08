@@ -1,5 +1,6 @@
 //// The day is definitly present
 
+import gleam/dynamic/decode
 import gleam/int
 import gleam/option.{type Option, None, Some}
 import gleam/result
@@ -13,11 +14,11 @@ pub type Date {
 }
 
 pub fn to_string(date: Date) {
-  int.to_string(date.day)
-  <> "."
-  <> int.to_string(date.month)
-  <> "."
-  <> int.to_string(date.year)
+  string.pad_start(int.to_string(date.year), 4, "0")
+  <> "/"
+  <> string.pad_start(int.to_string(date.month), 2, "0")
+  <> "/"
+  <> string.pad_start(int.to_string(date.day), 2, "0")
 }
 
 /// A date, where not all information is available (like "5.12").
@@ -145,6 +146,14 @@ pub fn parse_full_date(
       is_fiscal_valid_date(Date(year, month, day))
     }
     _ -> Error("invalid date: " <> text)
+  }
+}
+
+pub fn decode_full_date() {
+  use date <- decode.then(decode.string)
+  case parse_full_date(date, "/", YearMonthDay) {
+    Error(e) -> decode.failure(Date(1, 1, 1979), e)
+    Ok(date) -> decode.success(date)
   }
 }
 

@@ -1,3 +1,4 @@
+import gleam/dynamic/decode
 import gleam/option.{None, Some}
 import gleam/result
 import gleam/string
@@ -119,4 +120,12 @@ pub fn run(input: String) -> Result(template.Template, error.Error) {
   )
 
   Ok(template.Template(parts:))
+}
+
+pub fn decode_template() {
+  use template <- decode.then(decode.string)
+  case run(template) {
+    Error(e) -> decode.failure(template.Template([]), error.to_string(e))
+    Ok(t) -> decode.success(t)
+  }
 }

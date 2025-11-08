@@ -1,4 +1,5 @@
 import gleam/dict
+import gleam/dynamic/decode
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/result

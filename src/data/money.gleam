@@ -1,3 +1,4 @@
+import gleam/dynamic/decode
 import gleam/int
 import gleam/option.{type Option, None, Some}
 import gleam/result
@@ -13,6 +14,63 @@ pub type Money {
     /// The Currency as a short string in uppercase letters (like EUR or USD)
     currency: String,
   )
+}
+
+pub fn money_decoder() -> decode.Decoder(Money) {
+  use amount <- decode.field("amount", decode.int)
+  use decimal_pos <- decode.field("decimal_pos", decode.int)
+  use currency <- decode.field("currency", decode.string)
+  decode.success(Money(amount:, decimal_pos:, currency:))
+}
+
+/// Bring to amounts to the same decimal
+pub fn equalize_decimal(a: Money, b: Money) {
+  case a.decimal_pos, b.decimal_pos {
+    a_pos, b_pos if a_pos == b_pos -> #(a, b)
+    a_pos, b_pos if a_pos < b_pos ->
+      equalize_decimal(
+        Money(..a, amount: a.amount * 10, decimal_pos: a_pos + 1),
+        b,
+      )
+    _, b_pos ->
+      equalize_decimal(
+        a,
+        Money(..b, amount: b.amount * 10, decimal_pos: b_pos + 1),
+      )
+  }
+}
+
+/// Add 2 amounts.
+pub fn add(a: Money, b: Money) {
+  let #(a, b) = equalize_decimal(a, b)
+  Money(..a, amount: a.amount + b.amount)
+}
+
+/// Switch the sign of the amount.
+pub fn negate(money: Money) {
+  Money(..money, amount: -money.amount)
+}
+
+/// Compare 2 amounts
+pub fn equal(a: Money, b: Money) {
+  let #(a, b) = equalize_decimal(a, b)
+  a == b
+}
+
+/// Print an amount in ledger compatible string.
+pub fn to_string(money: Money) {
+  let amount_str = int.to_string(money.amount)
+  let amount_str = case money.decimal_pos {
+    0 -> amount_str
+    pos_from_end -> {
+      let pos_from_start = string.length(amount_str) - pos_from_end
+      string.drop_end(amount_str, pos_from_end)
+      <> "."
+      <> string.drop_start(amount_str, pos_from_start)
+    }
+  }
+
+  amount_str <> " " <> money.currency
 }
 
 /// Parse a string, represnting money.
@@ -31,12 +89,12 @@ pub fn parse_money(
   use #(amount, currency) <- result.try(case string.split(text, " ") {
     [amount, currency] -> {
       case string.length(currency) {
-        3 -> Ok(#(amount, string.uppercase(currency)))
+        3 | 2 | 1 -> Ok(#(amount, string.uppercase(currency)))
         _ ->
           Error(
             "invalid currency: "
             <> currency
-            <> ", expecting 3 letter code (EUR, USD, ...)",
+            <> ", expecting 1-3 letter code (EUR, USD, DM, ...)",
           )
       }
     }
@@ -69,4 +127,12 @@ pub fn parse_money(
   )
 
   Ok(Money(amount:, decimal_pos:, currency:))
+}
+
+pub fn decode_money() {
+  use amount <- decode.then(decode.string)
+  case parse_money(amount, Some("."), None) {
+    Error(e) -> decode.failure(Money(0, 0, ""), e)
+    Ok(money) -> decode.success(money)
+  }
 }

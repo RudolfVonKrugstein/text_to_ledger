@@ -1,3 +1,4 @@
+import gleam/dynamic/decode
 import gleam/option.{type Option, None, Some}
 import gleam/regexp
 import gleam/string
@@ -85,6 +86,19 @@ pub type SplitRegex {
   SplitAfter(regex: regexp.Regexp)
 }
 
+pub fn decode_split_regex() -> decode.Decoder(SplitRegex) {
+  decode.one_of(decode_regex() |> decode.map(SplitBefore), [
+    {
+      use variant <- decode.field("split", decode.string)
+      use regex <- decode.field("regex", decode_regex())
+      case variant {
+        "after" -> decode.success(SplitAfter(regex))
+        _ -> decode.success(SplitBefore(regex))
+      }
+    },
+  ])
+}
+
 pub fn split(
   with regex: SplitRegex,
   over subject: String,
@@ -99,5 +113,16 @@ pub fn split_all(with regex: SplitRegex, over subject: String) -> List(String) {
   case regex {
     SplitBefore(regex) -> split_before_all(regex, subject)
     SplitAfter(regex) -> split_after_all(regex, subject)
+  }
+}
+
+pub fn decode_regex() {
+  use regex <- decode.then(decode.string)
+  case regexp.compile(regex, regexp.Options(False, True)) {
+    Error(e) -> {
+      let assert Ok(zero) = regexp.compile("", regexp.Options(False, True))
+      decode.failure(zero, "unable to compile regex: " <> regex)
+    }
+    Ok(regex) -> decode.success(regex)
   }
 }

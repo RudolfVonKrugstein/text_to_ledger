@@ -1,3 +1,4 @@
+import gleam/string
 import nibble
 import nibble/lexer as nibble_lexer
 import template/parser/lexer
@@ -9,4 +10,11 @@ pub type Error {
   LexerError(nibble_lexer.Error)
   /// An error occured during parsing.
   ParseError(List(nibble.DeadEnd(lexer.Token, Nil)))
+}
+
+pub fn to_string(error: Error) {
+  case error {
+    LexerError(e) -> string.inspect(e)
+    ParseError(e) -> string.inspect(e)
+  }
 }
