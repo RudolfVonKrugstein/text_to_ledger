@@ -119,7 +119,7 @@ pub fn split_all(with regex: SplitRegex, over subject: String) -> List(String) {
 pub fn decode_regex() {
   use regex <- decode.then(decode.string)
   case regexp.compile(regex, regexp.Options(False, True)) {
-    Error(e) -> {
+    Error(_e) -> {
       let assert Ok(zero) = regexp.compile("", regexp.Options(False, True))
       decode.failure(zero, "unable to compile regex: " <> regex)
     }
