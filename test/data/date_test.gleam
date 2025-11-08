@@ -3,6 +3,7 @@ import data/date.{
   WithDayFullDate, WithYearAndMonth, WithYearFullDate, YearMonthDay,
 }
 import gleam/list
+import gleam/option.{None, Some}
 import gleeunit/should
 
 pub fn parse_date_test() {
@@ -72,5 +73,25 @@ pub fn parse_partial_date_with_year_test() {
       date.parse_partial_date_with_year(text, sep, order),
       Ok(expected),
     )
+  })
+}
+
+pub fn find_date_in_range_test() {
+  let cases = [
+    #(
+      OnlyDay(3),
+      Some(Date(2025, 12, 1)),
+      Some(Date(2025, 12, 31)),
+      Date(2025, 12, 3),
+    ),
+    #(OnlyDay(3), Some(Date(2025, 12, 1)), None, Date(2025, 12, 3)),
+    #(OnlyDay(3), None, Some(Date(2025, 12, 31)), Date(2025, 12, 3)),
+  ]
+
+  cases
+  |> list.each(fn(c) {
+    let #(in_date, min, max, expected) = c
+
+    should.equal(date.full_date_from_range(in_date, min, max), Ok(expected))
   })
 }

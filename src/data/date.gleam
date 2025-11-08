@@ -1,7 +1,7 @@
 //// The day is definitly present
 
 import gleam/int
-import gleam/option
+import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/string
 
@@ -10,6 +10,14 @@ import gleam/string
 /// (i.E. 20.2.2025).
 pub type Date {
   Date(year: Int, month: Int, day: Int)
+}
+
+pub fn to_string(date: Date) {
+  int.to_string(date.day)
+  <> "."
+  <> int.to_string(date.month)
+  <> "."
+  <> int.to_string(date.year)
 }
 
 /// A date, where not all information is available (like "5.12").
@@ -22,7 +30,7 @@ pub type PartialDateWithDay {
 /// A date, where not all information is available (like "5.12").
 pub type PartialDateWithYear {
   OnlyYear(year: Int)
-  WithYearAndMonth(month: Int, day: Int)
+  WithYearAndMonth(year: Int, month: Int)
   WithYearFullDate(date: Date)
 }
 
@@ -197,5 +205,200 @@ pub fn parse_partial_date_with_day(
       Ok(WithDayFullDate(date))
     }
     _ -> Error("unable to parse partial date: " <> text)
+  }
+}
+
+/// Find the first (earliest) full date that this partial date
+/// could represent.
+///
+/// This basically means, we return the beginning of the month or
+/// year.
+pub fn first_possible_date(date: PartialDateWithYear) {
+  case date {
+    OnlyYear(year:) -> Date(year, 1, 1)
+    WithYearAndMonth(year:, month:) -> Date(year, month, 1)
+    WithYearFullDate(date:) -> date
+  }
+}
+
+/// Find the last (latest) full date that this partial date
+/// could represent.
+///
+/// This basically means, we return the end of the month or
+/// year.
+pub fn last_possible_date(date: PartialDateWithYear) {
+  case date {
+    OnlyYear(year:) -> Date(year, 12, 31)
+    WithYearAndMonth(year:, month:) ->
+      Date(year, month, days_in_month(year, month))
+    WithYearFullDate(date:) -> date
+  }
+}
+
+/// Returns the number of days in a month.
+fn days_in_month(year: Int, month: Int) {
+  case month {
+    2 ->
+      case is_leap_year(year) {
+        True -> 29
+        False -> 28
+      }
+    1 | 3 | 5 | 6 | 8 | 10 | 12 -> 31
+    _ -> 30
+  }
+}
+
+/// Test, if the given year is a leap year.
+fn is_leap_year(year: Int) -> Bool {
+  // Its a leap year if it is devideable by 4 ...
+  case year % 4 == 0 {
+    True ->
+      // .. but not if it is devidiable by 100 ...
+      case year % 100 == 0 {
+        True ->
+          // .. except if it is devidable by 400!
+          case year % 400 == 0 {
+            True -> True
+            False -> False
+          }
+        False -> True
+      }
+    False -> False
+  }
+}
+
+/// Checks if the `date` is later than the date given by `min`.
+pub fn is_after(date: Date, min: Date) {
+  case date, min {
+    Date(year, _, _), Date(min_year, _, _) if year > min_year -> True
+    Date(year, _, _), Date(min_year, _, _) if year < min_year -> False
+    Date(_, month, _), Date(_, min_month, _) if month > min_month -> True
+    Date(_, month, _), Date(_, min_month, _) if month < min_month -> False
+    Date(_, _, day), Date(_, _, min_day) if day > min_day -> True
+    _, _ -> False
+  }
+}
+
+/// Checks if the `date` is earlier than the date given by `min`.
+pub fn is_before(date: Date, max: Date) {
+  case date, max {
+    Date(year, _, _), Date(max_year, _, _) if year < max_year -> True
+    Date(year, _, _), Date(max_year, _, _) if year > max_year -> False
+    Date(_, month, _), Date(_, max_month, _) if month < max_month -> True
+    Date(_, month, _), Date(_, max_month, _) if month > max_month -> False
+    Date(_, _, day), Date(_, _, max_day) if day < max_day -> True
+    _, _ -> False
+  }
+}
+
+/// Checks if the date is in the given range.
+///
+/// `min` and `max` are both optional. If they are `None`, that end is not checked.
+pub fn date_is_in_range(date: Date, min: Option(Date), max: Option(Date)) {
+  case
+    option.map(min, fn(min) { !is_before(date, min) }),
+    option.map(max, fn(max) { !is_after(date, max) })
+  {
+    Some(False), _ -> False
+    _, Some(False) -> False
+    _, _ -> True
+  }
+}
+
+/// Incease the month by one.
+fn next_month(date: Date) {
+  case date.month {
+    12 -> Date(..date, month: 1)
+    _ -> Date(..date, month: date.month + 1)
+  }
+}
+
+/// Decrease the month by one.
+fn prev_month(date: Date) {
+  case date.month {
+    1 -> Date(..date, month: 12)
+    _ -> Date(..date, month: date.month - 1)
+  }
+}
+
+/// Find the first (earliest day) after `min`, that
+/// can be represented by the partial `date`.
+fn first_date_after(date: PartialDateWithDay, min: Date) {
+  case date {
+    OnlyDay(day:) if day >= min.day -> Ok(Date(..min, day:))
+    OnlyDay(day:) -> {
+      let next_month = next_month(min)
+      Ok(Date(..next_month, day:))
+    }
+    WithDayAndMonth(month:, day:)
+      if month > min.month || month == min.month && day >= min.day
+    -> Ok(Date(min.year, month, day))
+    WithDayAndMonth(month:, day:) -> Ok(Date(min.year + 1, month, day))
+    WithDayFullDate(date) ->
+      case !is_before(date, min) {
+        True -> Ok(date)
+        False -> Error(to_string(date) <> " is after " <> to_string(min))
+      }
+  }
+}
+
+/// Find the first (latest day) before `max`, that
+/// can be represented by the partial `date`.
+fn first_date_before(date: PartialDateWithDay, max: Date) {
+  case date {
+    OnlyDay(day:) if day <= max.day -> Ok(Date(..max, day:))
+    OnlyDay(day:) -> {
+      let prev_month = prev_month(max)
+      Ok(Date(..prev_month, day:))
+    }
+    WithDayAndMonth(month:, day:)
+      if month < max.month || month == max.month && day <= max.day
+    -> Ok(Date(max.year, month, day))
+    WithDayAndMonth(month:, day:) -> Ok(Date(max.year + 1, month, day))
+    WithDayFullDate(date) ->
+      case !is_after(date, max) {
+        True -> Ok(date)
+        False -> Error(to_string(date) <> " is before " <> to_string(max))
+      }
+  }
+}
+
+/// Complete the date `date` by finding a date between
+/// `min` and `max` that can be represnted by the partial date `date`.
+///
+/// If `min` or `max` is `None`, the range check at that boundary is ignored.
+/// If both `min` and `max` are missing, and `date` is not already complete
+/// the function fails.
+/// Also if no date between `min` and `max` is found, the function also fails.
+pub fn full_date_from_range(
+  date: PartialDateWithDay,
+  min: Option(Date),
+  max: Option(Date),
+) {
+  case min, max {
+    Some(min), max -> {
+      use test_date <- result.try(first_date_after(date, min))
+
+      case option.map(max, fn(max) { !is_after(test_date, max) }) {
+        None | Some(True) -> Ok(test_date)
+        _ ->
+          Error(
+            "cannot find day for "
+            <> string.inspect(date)
+            <> " between "
+            <> to_string(min)
+            <> case max {
+              Some(max) -> " and " <> to_string(max)
+              None -> " (no upper limit)"
+            },
+          )
+      }
+    }
+    None, Some(max) -> first_date_before(date, max)
+    None, None ->
+      case date {
+        WithDayFullDate(date) -> Ok(date)
+        _ -> Error("date is incomplete and no boundaries are given")
+      }
   }
 }
