@@ -46,36 +46,30 @@ pub fn parse_money(
       )
   })
 
-  use #(full_amount, fraction_amount) <- result.try(case decimal {
-    None -> Ok(#("0", amount))
-    Some(decimal) -> {
+  use amount <- result.try(case decimal {
+    None -> Ok(amount)
+    Some(decimal) ->
       case string.split(amount, decimal) {
-        [full_amount, fraction_amount] -> Ok(#(full_amount, fraction_amount))
-        _ ->
-          Error(
-            "invalid currency amount: "
-            <> text
-            <> ", decimal seperator not found ("
-            <> decimal
-            <> ")",
-          )
+        [amount] -> Ok(amount)
+        [amount, fraction] -> {
+          case string.length(fraction) {
+            2 -> Ok(amount <> fraction)
+            _ -> Error("invalid currency amount: " <> amount)
+          }
+        }
+        _ -> Error("invalid currency amount: " <> amount)
       }
-    }
   })
-  let full_amount = case thousands {
-    None -> full_amount
-    Some(sep) -> string.replace(full_amount, sep, "")
+
+  let amount = case thousands {
+    None -> amount
+    Some(sep) -> string.replace(amount, sep, "")
   }
 
-  use full_amount <- result.try(
-    int.parse(full_amount)
+  use amount <- result.try(
+    int.parse(amount)
     |> result.map_error(fn(_) { "invalid currency amount: " <> text }),
   )
 
-  use fraction_amount <- result.try(
-    int.parse(fraction_amount)
-    |> result.map_error(fn(_) { "invalid currency amount: " <> text }),
-  )
-
-  Ok(Money(full_amount * 100 + fraction_amount, currency))
+  Ok(Money(amount, currency))
 }
