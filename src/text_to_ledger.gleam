@@ -1,5 +1,7 @@
+import cli/main
 import gleam/io
 
 pub fn main() -> Nil {
-  io.println("Hello from text_to_ledger!")
+  let assert Ok(_) = main.cli()
+  Nil
 }

@@ -58,9 +58,9 @@ pub fn bank_transaction_template_decoder() -> decode.Decoder(
   use end_regex <- decode.field("end_regex", regexp_ext.decode_split_regex())
   use subject <- decode.field("subject", parser.decode_template())
   use amount <- decode.field("amount", parser.decode_template())
-  use book_date <- decode.field("book_date", parser.decode_template())
+  use book_date <- decode.field("booking_date", parser.decode_template())
   use exec_date <- decode.optional_field(
-    "exec_date",
+    "execution_date",
     None,
     decode.optional(parser.decode_template()),
   )

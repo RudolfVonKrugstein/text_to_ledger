@@ -44,20 +44,24 @@ pub fn bank_statement_decoder() -> decode.Decoder(BankStatement) {
     decode.optional(decode.string),
   )
   use account <- decode.field("account", decode.string)
-  use start_date <- decode.field(
+  use start_date <- decode.optional_field(
     "start_date",
+    None,
     decode.optional(date.decode_full_date()),
   )
-  use end_date <- decode.field(
+  use end_date <- decode.optional_field(
     "end_date",
+    None,
     decode.optional(date.decode_full_date()),
   )
-  use start_amount <- decode.field(
+  use start_amount <- decode.optional_field(
     "start_amount",
+    None,
     decode.optional(money.decode_money()),
   )
-  use end_amount <- decode.field(
+  use end_amount <- decode.optional_field(
     "end_amount",
+    None,
     decode.optional(money.decode_money()),
   )
   decode.success(BankStatement(
@@ -87,22 +91,30 @@ pub fn bank_statement_template_decoder() -> decode.Decoder(
   BankStatementTemplate,
 ) {
   use regexes <- decode.field("regexes", decode.list(regexp_ext.decode_regex()))
-  use bank <- decode.field("bank", decode.optional(parser.decode_template()))
+  use bank <- decode.optional_field(
+    "bank",
+    None,
+    decode.optional(parser.decode_template()),
+  )
   use account <- decode.field("account", parser.decode_template())
-  use start_date <- decode.field(
+  use start_date <- decode.optional_field(
     "start_date",
+    None,
     decode.optional(parser.decode_template()),
   )
-  use end_date <- decode.field(
+  use end_date <- decode.optional_field(
     "end_date",
+    None,
     decode.optional(parser.decode_template()),
   )
-  use start_amount <- decode.field(
+  use start_amount <- decode.optional_field(
     "start_amount",
+    None,
     decode.optional(parser.decode_template()),
   )
-  use end_amount <- decode.field(
+  use end_amount <- decode.optional_field(
     "end_amount",
+    None,
     decode.optional(parser.decode_template()),
   )
   decode.success(BankStatementTemplate(

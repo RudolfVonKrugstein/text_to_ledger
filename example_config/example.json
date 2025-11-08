@@ -1,0 +1,17 @@
+{
+  "account_mapping": {},
+  "templates": [{
+    "statement":{
+      "regexes": [],
+      "account": ""
+    },
+    "transaction":{
+      "regexes": [],
+      "start_regex": "a",
+      "end_regex": "a",
+      "booking_date": "1.1.2025",
+      "amount": "1.00 USD",
+      "subject": "subject"
+    }
+  }]
+}
