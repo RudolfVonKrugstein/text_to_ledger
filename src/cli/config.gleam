@@ -1,8 +1,6 @@
 import data/bank_statement
 import gleam/dict
 import gleam/dynamic/decode
-import gleam/option.{None}
-import template/template
 
 import data/bank_transaction
 
