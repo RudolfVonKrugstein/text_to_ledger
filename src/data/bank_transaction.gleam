@@ -38,6 +38,8 @@ pub fn bank_transaction_decoder() -> decode.Decoder(BankTransaction) {
 pub type BankTransactionTemplate {
   BankTransactionTemplate(
     regexes: List(regex.RegexWithOpts),
+    start_area_regex: Option(split_regex.SplitRegex),
+    end_area_regex: Option(split_regex.SplitRegex),
     start_regex: split_regex.SplitRegex,
     end_regex: split_regex.SplitRegex,
     subject: template.Template,
@@ -51,6 +53,16 @@ pub fn bank_transaction_template_decoder() -> decode.Decoder(
   BankTransactionTemplate,
 ) {
   use regexes <- decode.field("regexes", decode.list(regex.regex_opt_decoder()))
+  use start_area_regex <- decode.optional_field(
+    "start_area_regex",
+    None,
+    decode.optional(split_regex.split_regex_decoder()),
+  )
+  use end_area_regex <- decode.optional_field(
+    "end_area_regex",
+    None,
+    decode.optional(split_regex.split_regex_decoder()),
+  )
   use start_regex <- decode.field(
     "start_regex",
     split_regex.split_regex_decoder(),
@@ -66,6 +78,8 @@ pub fn bank_transaction_template_decoder() -> decode.Decoder(
   )
   decode.success(BankTransactionTemplate(
     regexes:,
+    start_area_regex:,
+    end_area_regex:,
     start_regex:,
     end_regex:,
     subject:,
@@ -77,6 +91,8 @@ pub fn bank_transaction_template_decoder() -> decode.Decoder(
 
 pub fn parse_template(
   regexes regexes: List(regex.RegexWithOpts),
+  start_area start_area_regex: Option(split_regex.SplitRegex),
+  end_area end_area_regex: Option(split_regex.SplitRegex),
   start start_regex: split_regex.SplitRegex,
   end end_regex: split_regex.SplitRegex,
   subject subject: String,
@@ -94,6 +110,8 @@ pub fn parse_template(
 
   Ok(BankTransactionTemplate(
     regexes:,
+    start_area_regex:,
+    end_area_regex:,
     start_regex:,
     end_regex:,
     subject:,

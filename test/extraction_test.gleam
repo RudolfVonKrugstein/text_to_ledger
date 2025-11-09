@@ -6,7 +6,7 @@ import data/regex
 import data/split_regex
 import extractor
 import gleam/list
-import gleam/option.{Some}
+import gleam/option.{None, Some}
 import gleam/regexp
 import gleam/result
 import gleeunit/should
@@ -29,6 +29,9 @@ Something else
 29. 31. Transaction 4 2.01 S
 
 End
+
+# this looks like a transaction, but is none
+01. 01. Just a comment 0.01 S
 "
 
   let assert Ok(bs_regexes) =
@@ -48,6 +51,11 @@ End
       ],
       regex.compile_with_default_opts,
     ))
+
+  let assert Ok(start_trans_areas_regex) =
+    regexp.compile("Final Amount.*$", regexp.Options(False, True))
+  let assert Ok(end_trans_areas_regex) =
+    regexp.compile("End", regexp.Options(False, True))
 
   let assert Ok(start_trans_regex) =
     regexp.compile(
@@ -71,6 +79,8 @@ End
   let assert Ok(trans_template) =
     bank_transaction.parse_template(
       regexes: trans_regexes,
+      start_area: Some(split_regex.SplitAfter(start_trans_areas_regex)),
+      end_area: Some(split_regex.SplitBefore(end_trans_areas_regex)),
       start: split_regex.SplitBefore(start_trans_regex),
       end: split_regex.SplitBefore(end_trans_regex),
       booking_date: "{bd}",

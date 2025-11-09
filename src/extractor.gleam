@@ -7,7 +7,6 @@ import data/split_regex
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
-import gleam/string
 import regexp_ext
 import template/template
 
@@ -63,20 +62,47 @@ pub fn option_render_template(
   option_map_result(temp, template.render(_, vars))
 }
 
+fn split_text_with_start_and_end(
+  input: String,
+  start: split_regex.SplitRegex,
+  end: Option(split_regex.SplitRegex),
+) {
+  split_regex.split_all(start, input)
+  |> list.drop(1)
+  |> list.map(fn(begining) {
+    case end |> option.then(split_regex.split(_, begining)) {
+      None -> begining
+      Some(#(begining, _)) -> begining
+    }
+  })
+}
+
 // Split the transactions texts from the original input.
 fn split_transactions(
   input: String,
   trans_template: bank_transaction.BankTransactionTemplate,
 ) {
-  // Find the beginning of the next transactin
-  split_regex.split_all(trans_template.start_regex, input)
-  |> list.drop(1)
-  |> list.map(fn(begining) {
-    case split_regex.split(trans_template.end_regex, begining) {
-      None -> begining
-      Some(#(begining, _)) -> begining
-    }
+  // split the areas
+  let trans_areas = case trans_template.start_area_regex {
+    None -> [input]
+    Some(start_area_regex) ->
+      split_text_with_start_and_end(
+        input,
+        start_area_regex,
+        trans_template.end_area_regex,
+      )
+  }
+
+  // slit the transactions inside the areas
+  trans_areas
+  |> list.map(fn(area) {
+    split_text_with_start_and_end(
+      area,
+      trans_template.start_regex,
+      Some(trans_template.end_regex),
+    )
   })
+  |> list.flatten
 }
 
 // Helper function, rendering a variable and parsing it as money.
