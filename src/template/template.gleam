@@ -116,14 +116,15 @@ fn apply_mods(values: List(String), mods: List(TemplateMod)) {
 
 /// Render a variable into a string.
 fn render_variable(name: String, mods: List(TemplateMod), vars: Vars) {
-  use values <- result.try(
-    find_var(name, vars) |> option.to_result("unable to find variable " <> name),
-  )
+  let values = find_var(name, vars) |> option.unwrap([])
 
   use values <- result.try(apply_mods(values, mods))
 
   use value <- result.try(
-    list.first(values) |> result.map_error(fn(_) { name <> " has not matches" }),
+    list.first(values)
+    |> result.map_error(fn(_) {
+      "variable" <> name <> " has no matches or does not exist"
+    }),
   )
 
   Ok(value)

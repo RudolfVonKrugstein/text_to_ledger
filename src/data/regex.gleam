@@ -1,12 +1,19 @@
 import gleam/dynamic/decode
 import gleam/regexp
+import gleam/result
 
 pub type RegexWithOpts {
-  RegexWithOpts(regex: regexp.Regexp, optional: Bool)
+  RegexWithOpts(regex: regexp.Regexp, original: String, optional: Bool)
 }
 
-pub fn with_default_opts(regex: regexp.Regexp) {
-  RegexWithOpts(regex, False)
+pub fn compile(regex: String, optional: Bool) {
+  use compiled <- result.try(regexp.compile(regex, regexp.Options(False, True)))
+  Ok(RegexWithOpts(compiled, regex, optional))
+}
+
+pub fn compile_with_default_opts(regex: String) {
+  use compiled <- result.try(regexp.compile(regex, regexp.Options(False, True)))
+  Ok(RegexWithOpts(compiled, regex, False))
 }
 
 /// Decode a regex from a string
@@ -22,17 +29,27 @@ pub fn regex_decoder() {
 }
 
 pub fn regex_opt_decoder() {
+  let compile_decode = fn(plain: String, optional: Bool) {
+    case compile(plain, optional) {
+      Ok(r) -> decode.success(r)
+      Error(_e) -> {
+        let assert Ok(zero) = compile_with_default_opts("")
+        decode.failure(zero, "unable to compile regex: " <> plain)
+      }
+    }
+  }
+
   decode.one_of(
     {
       // plain regex as string
-      use regex <- decode.then(regex_decoder())
-      decode.success(RegexWithOpts(regex, False))
+      use plain <- decode.then(decode.string)
+      compile_decode(plain, False)
     },
     [
       {
-        use regex <- decode.field("regex", regex_decoder())
+        use plain <- decode.field("regex", decode.string)
         use optional <- decode.optional_field("optional", False, decode.bool)
-        decode.success(RegexWithOpts(regex, optional))
+        compile_decode(plain, optional)
       },
     ],
   )

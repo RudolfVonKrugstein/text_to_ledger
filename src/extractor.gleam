@@ -7,6 +7,7 @@ import data/split_regex
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
+import gleam/string
 import regexp_ext
 import template/template
 
@@ -21,14 +22,24 @@ fn extend_variables(
   doc: String,
   start: template.Vars,
 ) {
-  list.fold(regexes, start, fn(vars, regex) {
+  list.try_fold(regexes, start, fn(vars, regex) {
     let captures = regexp_ext.capture_names(with: regex.regex, over: doc)
 
-    list.fold(list.flatten(captures), vars, fn(vars, capture) {
-      let regexp_ext.NamedCapture(name:, value:) = capture
+    case captures {
+      [] if regex.optional == True -> Ok(vars)
+      [] ->
+        Error(
+          "required regex <" <> regex.original <> "> did not match on " <> doc,
+        )
+      captures ->
+        Ok(
+          list.fold(list.flatten(captures), vars, fn(vars, capture) {
+            let regexp_ext.NamedCapture(name:, value:) = capture
 
-      template.add_to_vars(vars, name, value)
-    })
+            template.add_to_vars(vars, name, value)
+          }),
+        )
+    }
   })
 }
 
@@ -138,7 +149,11 @@ fn extract_transaction_data(
   max_date: Option(date.Date),
 ) {
   // collect transaction variables
-  let trans_vars = extend_variables(trans_template.regexes, input, bank_vars)
+  use trans_vars <- result.try(extend_variables(
+    trans_template.regexes,
+    input,
+    bank_vars,
+  ))
 
   use subject <- result.try(template.render(trans_template.subject, trans_vars))
   use amount <- result.try(extract_money(trans_template.amount, trans_vars))
@@ -178,7 +193,7 @@ pub fn extract_bank_statement_data(
   trans_template: bank_transaction.BankTransactionTemplate,
 ) {
   // collect bank variables
-  let bank_vars = collect_variables(bs_template.regexes, input)
+  use bank_vars <- result.try(collect_variables(bs_template.regexes, input))
 
   use bank <- result.try(option_render_template(bs_template.bank, bank_vars))
   use account <- result.try(template.render(bs_template.account, bank_vars))

@@ -32,32 +32,22 @@ End
 "
 
   let assert Ok(bs_regexes) =
-    result.all(
-      list.map(
-        [
-          "Cool Bank - (?<an>DE[0-9]{5})\n",
-          "Start Amount: (?<sa_big>[0-9]+)\\.(?<sa_small>[0-9]{2}) (?<sa_sign>[HS]) on the (?<sd>[0-9]{1,2}\\.[0-9]{1,2}\\.[0-9]{4})",
-          "Final Amount: (?<fa_big>[0-9]+)\\.(?<fa_small>[0-9]{2}) (?<fa_sign>[HS]) on the (?<fd>[0-9]{1,2}\\.[0-9]{1,2}\\.[0-9]{4})",
-        ],
-        fn(r) {
-          regexp.compile(r, regexp.Options(False, False))
-          |> result.map(regex.with_default_opts)
-        },
-      ),
-    )
+    result.all(list.map(
+      [
+        "Cool Bank - (?<an>DE[0-9]{5})\n",
+        "Start Amount: (?<sa_big>[0-9]+)\\.(?<sa_small>[0-9]{2}) (?<sa_sign>[HS]) on the (?<sd>[0-9]{1,2}\\.[0-9]{1,2}\\.[0-9]{4})",
+        "Final Amount: (?<fa_big>[0-9]+)\\.(?<fa_small>[0-9]{2}) (?<fa_sign>[HS]) on the (?<fd>[0-9]{1,2}\\.[0-9]{1,2}\\.[0-9]{4})",
+      ],
+      regex.compile_with_default_opts,
+    ))
 
   let assert Ok(trans_regexes) =
-    result.all(
-      list.map(
-        [
-          "^(?<bd>[0-9]{1,2})\\. (?<ed>[0-9]{1,2})\\. (?<line1>[^\\n]+) (?<a_big>[0-9])+\\.(?<a_small>[0-9]{2}) (?<a_sign>[HS])(?<lines>(.|\\n)*)$",
-        ],
-        fn(r) {
-          regexp.compile(r, regexp.Options(False, True))
-          |> result.map(regex.with_default_opts)
-        },
-      ),
-    )
+    result.all(list.map(
+      [
+        "^(?<bd>[0-9]{1,2})\\. (?<ed>[0-9]{1,2})\\. (?<line1>[^\\n]+) (?<a_big>[0-9])+\\.(?<a_small>[0-9]{2}) (?<a_sign>[HS])(?<lines>(.|\\n)*)$",
+      ],
+      regex.compile_with_default_opts,
+    ))
 
   let assert Ok(start_trans_regex) =
     regexp.compile(
