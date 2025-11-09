@@ -1,10 +1,9 @@
 import data/date
 import data/money.{type Money}
+import data/regex
 import gleam/dynamic/decode
 import gleam/option.{type Option, None, Some}
-import gleam/regexp
 import gleam/result
-import regexp_ext/regexp_ext
 import template/parser/parser
 import template/template
 
@@ -77,7 +76,7 @@ pub fn bank_statement_decoder() -> decode.Decoder(BankStatement) {
 /// Template for extracting bank statement data.
 pub type BankStatementTemplate {
   BankStatementTemplate(
-    regexes: List(regexp.Regexp),
+    regexes: List(regex.RegexWithOpts),
     bank: Option(template.Template),
     account: template.Template,
     start_date: Option(template.Template),
@@ -90,7 +89,7 @@ pub type BankStatementTemplate {
 pub fn bank_statement_template_decoder() -> decode.Decoder(
   BankStatementTemplate,
 ) {
-  use regexes <- decode.field("regexes", decode.list(regexp_ext.decode_regex()))
+  use regexes <- decode.field("regexes", decode.list(regex.regex_opt_decoder()))
   use bank <- decode.optional_field(
     "bank",
     None,
@@ -129,7 +128,7 @@ pub fn bank_statement_template_decoder() -> decode.Decoder(
 }
 
 pub fn parse_template(
-  regexes regexes: List(regexp.Regexp),
+  regexes regexes: List(regex.RegexWithOpts),
   bank bank: Option(String),
   account account: String,
   starts_at start_date: Option(String),

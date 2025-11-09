@@ -1,10 +1,10 @@
 import data/date
 import data/money.{type Money}
+import data/regex
+import data/split_regex
 import gleam/dynamic/decode
 import gleam/option.{type Option, None, Some}
-import gleam/regexp.{type Regexp}
 import gleam/result
-import regexp_ext/regexp_ext
 import template/parser/parser
 import template/template
 
@@ -37,9 +37,9 @@ pub fn bank_transaction_decoder() -> decode.Decoder(BankTransaction) {
 /// Template for extracting bank transactions data.
 pub type BankTransactionTemplate {
   BankTransactionTemplate(
-    regexes: List(Regexp),
-    start_regex: regexp_ext.SplitRegex,
-    end_regex: regexp_ext.SplitRegex,
+    regexes: List(regex.RegexWithOpts),
+    start_regex: split_regex.SplitRegex,
+    end_regex: split_regex.SplitRegex,
     subject: template.Template,
     amount: template.Template,
     book_date: template.Template,
@@ -50,12 +50,12 @@ pub type BankTransactionTemplate {
 pub fn bank_transaction_template_decoder() -> decode.Decoder(
   BankTransactionTemplate,
 ) {
-  use regexes <- decode.field("regexes", decode.list(regexp_ext.decode_regex()))
+  use regexes <- decode.field("regexes", decode.list(regex.regex_opt_decoder()))
   use start_regex <- decode.field(
     "start_regex",
-    regexp_ext.decode_split_regex(),
+    split_regex.split_regex_decoder(),
   )
-  use end_regex <- decode.field("end_regex", regexp_ext.decode_split_regex())
+  use end_regex <- decode.field("end_regex", split_regex.split_regex_decoder())
   use subject <- decode.field("subject", parser.decode_template())
   use amount <- decode.field("amount", parser.decode_template())
   use book_date <- decode.field("booking_date", parser.decode_template())
@@ -76,9 +76,9 @@ pub fn bank_transaction_template_decoder() -> decode.Decoder(
 }
 
 pub fn parse_template(
-  regexes regexes: List(Regexp),
-  start start_regex: regexp_ext.SplitRegex,
-  end end_regex: regexp_ext.SplitRegex,
+  regexes regexes: List(regex.RegexWithOpts),
+  start start_regex: split_regex.SplitRegex,
+  end end_regex: split_regex.SplitRegex,
   subject subject: String,
   amount amount: String,
   booking_date booking_date: String,

@@ -2,26 +2,27 @@ import data/bank_statement
 import data/bank_transaction
 import data/date
 import data/money
+import data/regex
+import data/split_regex
 import gleam/list
 import gleam/option.{type Option, None, Some}
-import gleam/regexp
 import gleam/result
 import regexp_ext/regexp_ext
 import template/template
 
 /// Collect variables by applying regexes and getting all values for named captures groups.
-fn collect_variables(regexes: List(regexp.Regexp), doc: String) {
+fn collect_variables(regexes: List(regex.RegexWithOpts), doc: String) {
   extend_variables(regexes, doc, template.empty_vars())
 }
 
 /// Extend variables by applying regexes and getting all values for named captures groups.
 fn extend_variables(
-  regexes: List(regexp.Regexp),
+  regexes: List(regex.RegexWithOpts),
   doc: String,
   start: template.Vars,
 ) {
   list.fold(regexes, start, fn(vars, regex) {
-    let captures = regexp_ext.capture_names(with: regex, over: doc)
+    let captures = regexp_ext.capture_names(with: regex.regex, over: doc)
 
     list.fold(list.flatten(captures), vars, fn(vars, capture) {
       let regexp_ext.NamedCapture(name:, value:) = capture
@@ -57,10 +58,10 @@ fn split_transactions(
   trans_template: bank_transaction.BankTransactionTemplate,
 ) {
   // Find the beginning of the next transactin
-  regexp_ext.split_all(trans_template.start_regex, input)
+  split_regex.split_all(trans_template.start_regex, input)
   |> list.drop(1)
   |> list.map(fn(begining) {
-    case regexp_ext.split(trans_template.end_regex, begining) {
+    case split_regex.split(trans_template.end_regex, begining) {
       None -> begining
       Some(#(begining, _)) -> begining
     }

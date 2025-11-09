@@ -2,13 +2,14 @@ import data/bank_statement
 import data/bank_transaction
 import data/date
 import data/money
+import data/regex
+import data/split_regex
 import extractor
 import gleam/list
 import gleam/option.{Some}
 import gleam/regexp
 import gleam/result
 import gleeunit/should
-import regexp_ext/regexp_ext
 
 pub fn data_extraction_test() {
   let input =
@@ -38,7 +39,10 @@ End
           "Start Amount: (?<sa_big>[0-9]+)\\.(?<sa_small>[0-9]{2}) (?<sa_sign>[HS]) on the (?<sd>[0-9]{1,2}\\.[0-9]{1,2}\\.[0-9]{4})",
           "Final Amount: (?<fa_big>[0-9]+)\\.(?<fa_small>[0-9]{2}) (?<fa_sign>[HS]) on the (?<fd>[0-9]{1,2}\\.[0-9]{1,2}\\.[0-9]{4})",
         ],
-        fn(r) { regexp.compile(r, regexp.Options(False, False)) },
+        fn(r) {
+          regexp.compile(r, regexp.Options(False, False))
+          |> result.map(regex.with_default_opts)
+        },
       ),
     )
 
@@ -48,7 +52,10 @@ End
         [
           "^(?<bd>[0-9]{1,2})\\. (?<ed>[0-9]{1,2})\\. (?<line1>[^\\n]+) (?<a_big>[0-9])+\\.(?<a_small>[0-9]{2}) (?<a_sign>[HS])(?<lines>(.|\\n)*)$",
         ],
-        fn(r) { regexp.compile(r, regexp.Options(False, True)) },
+        fn(r) {
+          regexp.compile(r, regexp.Options(False, True))
+          |> result.map(regex.with_default_opts)
+        },
       ),
     )
 
@@ -74,8 +81,8 @@ End
   let assert Ok(trans_template) =
     bank_transaction.parse_template(
       regexes: trans_regexes,
-      start: regexp_ext.SplitBefore(start_trans_regex),
-      end: regexp_ext.SplitBefore(end_trans_regex),
+      start: split_regex.SplitBefore(start_trans_regex),
+      end: split_regex.SplitBefore(end_trans_regex),
       booking_date: "{bd}",
       execution_date: Some("{ed}"),
       amount: "{a_sign|r(H,+)|r(S,-)}{a_big}.{a_small} EUR",
