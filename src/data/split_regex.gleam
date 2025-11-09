@@ -2,7 +2,7 @@ import data/regex
 import gleam/dynamic/decode
 import gleam/option.{type Option}
 import gleam/regexp
-import regexp_ext/regexp_ext
+import regexp_ext
 
 pub type SplitRegex {
   SplitBefore(regex: regexp.Regexp)

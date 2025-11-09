@@ -2,7 +2,7 @@ import gleam/list
 import gleam/option.{None, Some}
 import gleam/regexp
 import gleeunit/should
-import regexp_ext/regexp_ext.{NamedCapture}
+import regexp_ext.{NamedCapture}
 
 pub fn capture_names_test() {
   let cases = [

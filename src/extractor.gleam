@@ -7,7 +7,7 @@ import data/split_regex
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
-import regexp_ext/regexp_ext
+import regexp_ext
 import template/template
 
 /// Collect variables by applying regexes and getting all values for named captures groups.
