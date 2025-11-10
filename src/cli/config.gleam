@@ -1,8 +1,87 @@
 import data/bank_statement
+import dot_env/env
 import gleam/dict
 import gleam/dynamic/decode
+import gleam/string
+import simplifile
 
 import data/bank_transaction
+
+/// A String, that can also be loaded from an external source
+pub fn external_string_decoder() {
+  decode.one_of(decode.string, [
+    {
+      use var <- decode.field("env_var", decode.string)
+      case env.get_string(var) {
+        Ok(s) -> decode.success(s)
+        Error(e) ->
+          decode.failure("", "unable to load env var " <> var <> ": " <> e)
+      }
+    },
+    {
+      use file <- decode.field("file", decode.string)
+      case simplifile.read(file) {
+        Ok(s) -> decode.success(s)
+        Error(e) ->
+          decode.failure(
+            "",
+            "unable to load " <> file <> ": " <> string.inspect(e),
+          )
+      }
+    },
+  ])
+}
+
+pub type InputConfig {
+  InputDirectory(directory: String)
+  InputPaperless(
+    url: String,
+    token: String,
+    allowed_tags: List(String),
+    forbidden_tags: List(String),
+    document_types: List(String),
+  )
+}
+
+fn input_config_decoder() -> decode.Decoder(InputConfig) {
+  use variant <- decode.field("type", decode.string)
+  case variant {
+    "directory" -> {
+      use directory <- decode.field("directory", decode.string)
+      decode.success(InputDirectory(directory:))
+    }
+    "paperless" -> {
+      use url <- decode.field("url", decode.string)
+      use token <- decode.field("token", external_string_decoder())
+      use allowed_tags <- decode.optional_field(
+        "allowed_tags",
+        [],
+        decode.list(decode.string),
+      )
+      use forbidden_tags <- decode.optional_field(
+        "forbidden_tags",
+        [],
+        decode.list(decode.string),
+      )
+      use document_types <- decode.field(
+        "document_types",
+        decode.list(decode.string),
+      )
+      decode.success(InputPaperless(
+        url:,
+        token:,
+        allowed_tags:,
+        forbidden_tags:,
+        document_types:,
+      ))
+    }
+    _ ->
+      decode.failure(
+        InputDirectory(""),
+        "unknown input config type " <> variant,
+      )
+  }
+}
 
 pub type TemplateConfig {
   TemplateConfig(
@@ -25,10 +104,11 @@ fn template_config_decoder() -> decode.Decoder(TemplateConfig) {
 
 /// Config file for cli
 pub type Config {
-  /// Mappings from accound numbers to ledger accounts
   Config(
+    /// Mappings from accound numbers to ledger accounts
     account_mapping: dict.Dict(String, String),
     templates: List(TemplateConfig),
+    input: InputConfig,
   )
 }
 
@@ -41,5 +121,7 @@ pub fn config_decoder() -> decode.Decoder(Config) {
     "templates",
     decode.list(template_config_decoder()),
   )
-  decode.success(Config(account_mapping:, templates:))
+  use input <- decode.field("input", input_config_decoder())
+
+  decode.success(Config(account_mapping:, templates:, input:))
 }

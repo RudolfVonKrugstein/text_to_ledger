@@ -7,6 +7,7 @@ import data/split_regex
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
+import gleam/string
 import regexp_ext
 import template/template
 
@@ -26,10 +27,22 @@ fn extend_variables(
 
     case captures {
       [] if regex.optional == True -> Ok(vars)
-      [] ->
+      [] -> {
+        let short_doc = case string.length(doc) {
+          l if l < 256 -> doc
+          l ->
+            string.drop_end(doc, l - 100)
+            <> " ... "
+            <> string.drop_start(doc, l - 100)
+        }
         Error(
-          "required regex <" <> regex.original <> "> did not match on " <> doc,
+          "required regex <"
+          <> regex.original
+          <> "> does not match on doc: <"
+          <> short_doc
+          <> ">",
         )
+      }
       captures ->
         Ok(
           list.fold(list.flatten(captures), vars, fn(vars, capture) {
