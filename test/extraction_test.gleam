@@ -7,7 +7,6 @@ import data/split_regex
 import extractor
 import gleam/list
 import gleam/option.{Some}
-import gleam/regexp
 import gleam/result
 import gleeunit/should
 
@@ -52,18 +51,12 @@ End
       regex.compile_with_default_opts,
     ))
 
-  let assert Ok(start_trans_areas_regex) =
-    regexp.compile("Final Amount.*$", regexp.Options(False, True))
-  let assert Ok(end_trans_areas_regex) =
-    regexp.compile("End", regexp.Options(False, True))
+  let assert Ok(start_trans_areas_regex) = regex.compile("Final Amount.*$")
+  let assert Ok(end_trans_areas_regex) = regex.compile("End")
 
   let assert Ok(start_trans_regex) =
-    regexp.compile(
-      "[0-9]{1,2}\\. [0-9]{1,2}\\. [^\\n]+ [0-9]+\\.[0-9]{2} [HS]",
-      regexp.Options(False, False),
-    )
-  let assert Ok(end_trans_regex) =
-    regexp.compile("\\n\\n", regexp.Options(False, True))
+    regex.compile("[0-9]{1,2}\\. [0-9]{1,2}\\. [^\\n]+ [0-9]+\\.[0-9]{2} [HS]")
+  let assert Ok(end_trans_regex) = regex.compile("\\n\\n")
 
   let assert Ok(bs_template) =
     bank_statement.parse_template(

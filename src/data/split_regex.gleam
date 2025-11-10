@@ -1,12 +1,11 @@
 import data/regex
 import gleam/dynamic/decode
 import gleam/option.{type Option}
-import gleam/regexp
 import regexp_ext
 
 pub type SplitRegex {
-  SplitBefore(regex: regexp.Regexp)
-  SplitAfter(regex: regexp.Regexp)
+  SplitBefore(regex: regex.Regex)
+  SplitAfter(regex: regex.Regex)
 }
 
 pub fn split_regex_decoder() -> decode.Decoder(SplitRegex) {
@@ -27,14 +26,14 @@ pub fn split(
   over subject: String,
 ) -> Option(#(String, String)) {
   case regex {
-    SplitBefore(regex) -> regexp_ext.split_before(regex, subject)
-    SplitAfter(regex) -> regexp_ext.split_after(regex, subject)
+    SplitBefore(regex) -> regexp_ext.split_before(regex.regexp, subject)
+    SplitAfter(regex) -> regexp_ext.split_after(regex.regexp, subject)
   }
 }
 
 pub fn split_all(with regex: SplitRegex, over subject: String) -> List(String) {
   case regex {
-    SplitBefore(regex) -> regexp_ext.split_before_all(regex, subject)
-    SplitAfter(regex) -> regexp_ext.split_after_all(regex, subject)
+    SplitBefore(regex) -> regexp_ext.split_before_all(regex.regexp, subject)
+    SplitAfter(regex) -> regexp_ext.split_after_all(regex.regexp, subject)
   }
 }
