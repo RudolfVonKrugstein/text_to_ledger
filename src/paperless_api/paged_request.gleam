@@ -82,18 +82,6 @@ fn remove_prefix(orig: String, prefix: String) {
   }
 }
 
-fn next_decoder() -> decode.Decoder(Option(String)) {
-  use next <- decode.optional_field(
-    "next",
-    None,
-    decode.optional(decode.string),
-  )
-  case next {
-    Some("") | None -> decode.success(None)
-    Some(url) -> decode.success(Some(url))
-  }
-}
-
 fn get_next(
   last_req: PagedRequest(a),
   resp: paged_response.PageResponse(a),
