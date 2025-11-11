@@ -1,4 +1,5 @@
 import data/bank_statement
+import data/matcher
 import dot_env/env
 import gleam/dict
 import gleam/dynamic/decode
@@ -109,6 +110,7 @@ pub type Config {
     account_mapping: dict.Dict(String, String),
     templates: List(TemplateConfig),
     input: InputConfig,
+    matchers: matcher.Matchers,
   )
 }
 
@@ -122,6 +124,10 @@ pub fn config_decoder() -> decode.Decoder(Config) {
     decode.list(template_config_decoder()),
   )
   use input <- decode.field("input", input_config_decoder())
+  use matchers <- decode.field(
+    "matchers",
+    decode.list(matcher.matcher_decoder()),
+  )
 
-  decode.success(Config(account_mapping:, templates:, input:))
+  decode.success(Config(account_mapping:, templates:, input:, matchers:))
 }

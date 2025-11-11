@@ -1,5 +1,6 @@
 import cli/config
 import cli/parameters
+import data/matcher
 import data/sanity_check
 import dot_env
 import extractor
@@ -117,5 +118,18 @@ pub fn cli() {
     )
     |> result.map_error(string.inspect),
   )
-  Ok(Nil)
+
+  let transactions =
+    extracted
+    |> list.map(fn(e) {
+      let #(_, transactions) = e
+      transactions
+    })
+    |> list.flatten
+
+  use ledger <- result.try(result.all(
+    transactions
+    |> list.map(fn(t) { matcher.try_match(config.matchers, t, ":") }),
+  ))
+  Ok(ledger)
 }

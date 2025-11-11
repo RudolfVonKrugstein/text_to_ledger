@@ -19,6 +19,9 @@ pub type Matcher {
   )
 }
 
+pub type Matchers =
+  List(Matcher)
+
 pub fn matcher_to_json(matcher: Matcher) -> json.Json {
   let Matcher(name:, source_accounts:, target_account:, text:, regex:) = matcher
   json.object([
@@ -38,12 +41,17 @@ pub fn matcher_to_json(matcher: Matcher) -> json.Json {
 
 pub fn matcher_decoder() -> decode.Decoder(Matcher) {
   use name <- decode.field("name", decode.string)
-  use source_accounts <- decode.field(
+  use source_accounts <- decode.optional_field(
     "source_accounts",
+    None,
     decode.optional(decode.list(decode.string)),
   )
   use target_account <- decode.field("target_account", decode.string)
-  use text <- decode.field("text", decode.optional(decode.string))
+  use text <- decode.optional_field(
+    "text",
+    None,
+    decode.optional(decode.string),
+  )
   use regex <- decode.field("regex", regex.regex_decoder())
   decode.success(Matcher(
     name:,
@@ -55,7 +63,7 @@ pub fn matcher_decoder() -> decode.Decoder(Matcher) {
 }
 
 /// Return if a transaction matches.
-pub fn check_match(
+pub fn check_single_match(
   matcher: Matcher,
   transaction: BankTransaction,
   transaction_account: String,
@@ -71,13 +79,22 @@ pub fn check_match(
   }
 }
 
+/// Return if a transaction matches.
+pub fn check_match(
+  matchers: Matchers,
+  transaction: BankTransaction,
+  transaction_account: String,
+) {
+  list.any(matchers, check_single_match(_, transaction, transaction_account))
+}
+
 /// Return the ledger entry, if the transaction matches.
-pub fn try_match(
+pub fn try_single_match(
   matcher: Matcher,
   transaction: BankTransaction,
   transaction_account: String,
 ) {
-  case check_match(matcher, transaction, transaction_account) {
+  case check_single_match(matcher, transaction, transaction_account) {
     False -> None
     True ->
       Some(
@@ -95,5 +112,34 @@ pub fn try_match(
           ],
         ),
       )
+  }
+}
+
+pub fn try_match(
+  matchers: Matchers,
+  transaction: BankTransaction,
+  transaction_account: String,
+) {
+  case
+    list.find(matchers, check_single_match(_, transaction, transaction_account))
+  {
+    Error(_) -> Error("no matcher matched transaction")
+    Ok(matcher) -> {
+      Ok(
+        ledger.LedgerEntry(
+          date: transaction.booking_date,
+          subject: option.unwrap(matcher.text, matcher.name),
+          comment: "matcher: " <> matcher.name,
+          lines: [
+            ledger.LedgerEntryLine(transaction_account, transaction.amount, ""),
+            ledger.LedgerEntryLine(
+              transaction_account,
+              money.negate(transaction.amount),
+              "",
+            ),
+          ],
+        ),
+      )
+    }
   }
 }
