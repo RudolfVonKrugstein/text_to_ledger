@@ -30,7 +30,7 @@ pub type Error {
 pub fn error_string(e: Error) {
   case e {
     NoMatch(i) ->
-      "not matcher matched the input file:\n" <> input_file.to_string(i)
+      "no matcher matched the input file:\n" <> input_file.to_string(i)
   }
 }
 

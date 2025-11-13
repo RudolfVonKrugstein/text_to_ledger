@@ -1,12 +1,8 @@
 {
   "input": {
-    "type": "paperless",
-    "url": "https://dms-intern.huesken.org/private",
-    "token": {
-      "env_var": "PAPERLESS_PRIVATE_API_TOKEN"
-    },
-    "document_types": ["kontoauszug"],
-    "forbidden_tags": ["wrong_upload", "todo"]
+    "type": "directory",
+    "name": "home bank statements",
+    "directory": "/home/nathan/bank_statements/"
   },
   "account_mapping": {},
   "templates": [{
@@ -51,5 +47,12 @@
       "subject": "{line1}{lines|concat()}"
     }
   }],
-  "matchers": []
+  "matchers": [
+    {
+      "name": "Tante Rübe", 
+      "regex": "Tante Rübe", 
+      "source_accounts": ["assets:checking:private"],
+      "target_account": "expenses:food:grocery:tanteruebe"
+    }
+  ]
 }

@@ -79,15 +79,21 @@ pub fn cli() {
   )
   use config <- result.try(
     json.parse(config, config.config_decoder())
-    |> result.map_error(string.inspect),
+    |> result.map_error(fn(e) { "error loading config: " <> string.inspect(e) }),
   )
 
   use input_loader <- result.try(case config.input {
-    config.InputDirectory(dir) -> {
-      directory_loader.new(dir)
-      |> result.map_error(string.inspect)
+    config.InputDirectory(name, dir) -> {
+      directory_loader.new(name, dir)
+      |> result.map_error(fn(e) {
+        "error creating directory loader for "
+        <> dir
+        <> ": "
+        <> string.inspect(e)
+      })
     }
     config.InputPaperless(
+      name:,
       url:,
       token:,
       allowed_tags:,
@@ -95,6 +101,7 @@ pub fn cli() {
       document_types:,
     ) -> {
       paperless_loader.new(
+        name,
         url,
         token,
         allowed_tags,

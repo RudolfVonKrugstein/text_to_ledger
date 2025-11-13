@@ -15,6 +15,7 @@ import regex/split_regex
 pub fn data_extraction_test() {
   let input =
     InputFile(
+      loader: "test-setup",
       name: "test",
       title: "test input file",
       content: "Cool Bank - DE12456

@@ -31,6 +31,7 @@ fn rec_read_directory(dir: String) {
 }
 
 fn next_impl(
+  loader_name: String,
   all: List(String),
 ) -> Result(Option(#(InputFile, InputLoader)), String) {
   case all {
@@ -43,13 +44,16 @@ fn next_impl(
         }),
       )
       Ok(
-        Some(#(InputFile(f, "", content), InputLoader(fn() { next_impl(rest) }))),
+        Some(#(
+          InputFile(f, loader_name, "", content),
+          InputLoader(fn() { next_impl(loader_name, rest) }),
+        )),
       )
     }
   }
 }
 
-pub fn new(dir: String) {
+pub fn new(name: String, dir: String) {
   use files <- result.try(rec_read_directory(dir))
-  Ok(InputLoader(fn() { next_impl(files) }))
+  Ok(InputLoader(next: fn() { next_impl(name, files) }))
 }

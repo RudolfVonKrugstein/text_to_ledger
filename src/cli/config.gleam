@@ -34,8 +34,9 @@ pub fn external_string_decoder() {
 }
 
 pub type InputConfig {
-  InputDirectory(directory: String)
+  InputDirectory(name: String, directory: String)
   InputPaperless(
+    name: String,
     url: String,
     token: String,
     allowed_tags: List(String),
@@ -48,10 +49,12 @@ fn input_config_decoder() -> decode.Decoder(InputConfig) {
   use variant <- decode.field("type", decode.string)
   case variant {
     "directory" -> {
+      use name <- decode.field("name", decode.string)
       use directory <- decode.field("directory", decode.string)
-      decode.success(InputDirectory(directory:))
+      decode.success(InputDirectory(name:, directory:))
     }
     "paperless" -> {
+      use name <- decode.field("name", decode.string)
       use url <- decode.field("url", decode.string)
       use token <- decode.field("token", external_string_decoder())
       use allowed_tags <- decode.optional_field(
@@ -69,6 +72,7 @@ fn input_config_decoder() -> decode.Decoder(InputConfig) {
         decode.list(decode.string),
       )
       decode.success(InputPaperless(
+        name:,
         url:,
         token:,
         allowed_tags:,
@@ -78,7 +82,7 @@ fn input_config_decoder() -> decode.Decoder(InputConfig) {
     }
     _ ->
       decode.failure(
-        InputDirectory(""),
+        InputDirectory("", ""),
         "unknown input config type " <> variant,
       )
   }

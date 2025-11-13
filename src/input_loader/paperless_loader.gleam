@@ -11,6 +11,7 @@ import paperless_api/paged_request
 import paperless_api/tags_request
 
 fn next_impl(
+  loader_name: String,
   page: List(document.Document),
   next_req: Option(paged_request.PagedRequest(document.Document)),
 ) -> Result(Option(#(InputFile, InputLoader)), String) {
@@ -23,13 +24,18 @@ fn next_impl(
         paged_request.run_request(next_req)
         |> result.map_error(paged_request.error_string),
       )
-      next_impl(page, next_req)
+      next_impl(loader_name, page, next_req)
     }
     [a, ..rest], _ -> {
       Ok(
         Some(#(
-          input_file.InputFile(int.to_string(a.id), a.title, a.content),
-          InputLoader(fn() { next_impl(rest, next_req) }),
+          input_file.InputFile(
+            loader_name,
+            int.to_string(a.id),
+            a.title,
+            a.content,
+          ),
+          InputLoader(fn() { next_impl(loader_name, rest, next_req) }),
         )),
       )
     }
@@ -37,6 +43,7 @@ fn next_impl(
 }
 
 pub fn new(
+  name: String,
   url: String,
   token: String,
   allowed_tags: List(String),
@@ -69,5 +76,5 @@ pub fn new(
     |> documents_request.set_tag_filter(allowed_tags)
     |> documents_request.set_not_tag_filter(forbidden_tags)
 
-  Ok(InputLoader(fn() { next_impl([], Some(doc_req)) }))
+  Ok(InputLoader(fn() { next_impl(name, [], Some(doc_req)) }))
 }
