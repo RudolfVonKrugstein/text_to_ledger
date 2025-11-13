@@ -2,13 +2,13 @@ import data/bank_statement
 import data/bank_transaction
 import data/date
 import data/money
-import data/regex
-import data/split_regex
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/string
 import input_loader/input_file
+import regex/area_regex
+import regex/regex
 import regexp_ext
 import template/template
 
@@ -78,49 +78,6 @@ pub fn option_render_template(
   vars: template.Vars,
 ) {
   option_map_result(temp, template.render(_, vars))
-}
-
-fn split_text_with_start_and_end(
-  input: input_file.InputFile,
-  start: split_regex.SplitRegex,
-  end: Option(split_regex.SplitRegex),
-) {
-  split_regex.split_all(start, input.content)
-  |> list.drop(1)
-  |> list.map(fn(begining) {
-    case end |> option.then(split_regex.split(_, begining)) {
-      None -> input_file.InputFile(..input, content: begining)
-      Some(#(begining, _)) -> input_file.InputFile(..input, content: begining)
-    }
-  })
-}
-
-// Split the transactions texts from the original input.
-fn split_transactions(
-  input: input_file.InputFile,
-  trans_template: bank_transaction.BankTransactionTemplate,
-) {
-  // split the areas
-  let trans_areas = case trans_template.start_area_regex {
-    None -> [input]
-    Some(start_area_regex) ->
-      split_text_with_start_and_end(
-        input,
-        start_area_regex,
-        trans_template.end_area_regex,
-      )
-  }
-
-  // slit the transactions inside the areas
-  trans_areas
-  |> list.map(fn(area) {
-    split_text_with_start_and_end(
-      area,
-      trans_template.start_regex,
-      Some(trans_template.end_regex),
-    )
-  })
-  |> list.flatten
 }
 
 // Helper function, rendering a variable and parsing it as money.
@@ -277,7 +234,9 @@ pub fn extract_bank_statement_data(
       end_amount:,
     )
 
-  let transaction_texts = split_transactions(input, trans_template)
+  let transaction_texts =
+    area_regex.split(trans_template.area, input.content)
+    |> list.map(fn(content) { input_file.InputFile(..input, content: content) })
 
   use transactions <- result.try(
     result.all(

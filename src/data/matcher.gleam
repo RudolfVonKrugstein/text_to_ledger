@@ -1,13 +1,13 @@
 import data/bank_transaction.{type BankTransaction}
 import data/ledger
 import data/money
-import data/regex
 import gleam/dynamic/decode
 import gleam/json
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/regexp
 import input_loader/input_file
+import regex/regex
 
 /// A matcher matches a transaction to a ledger entry
 pub type Matcher {

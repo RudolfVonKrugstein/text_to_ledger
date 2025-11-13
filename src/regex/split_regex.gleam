@@ -1,6 +1,6 @@
-import data/regex
 import gleam/dynamic/decode
 import gleam/option.{type Option}
+import regex/regex
 import regexp_ext
 
 pub type SplitRegex {

@@ -2,14 +2,15 @@ import data/bank_statement
 import data/bank_transaction
 import data/date
 import data/money
-import data/regex
-import data/split_regex
 import extractor
 import gleam/list
 import gleam/option.{Some}
 import gleam/result
 import gleeunit/should
 import input_loader/input_file.{InputFile}
+import regex/area_regex
+import regex/regex
+import regex/split_regex
 
 pub fn data_extraction_test() {
   let input =
@@ -63,6 +64,17 @@ End
     regex.compile("[0-9]{1,2}\\. [0-9]{1,2}\\. [^\\n]+ [0-9]+\\.[0-9]{2} [HS]")
   let assert Ok(end_trans_regex) = regex.compile("\\n\\n")
 
+  let trans_area =
+    area_regex.AreaSplit(
+      split_regex.SplitAfter(start_trans_areas_regex),
+      Some(split_regex.SplitBefore(end_trans_areas_regex)),
+      area_regex.AreaSplit(
+        split_regex.SplitBefore(start_trans_regex),
+        Some(split_regex.SplitBefore(end_trans_regex)),
+        area_regex.FullArea,
+      ),
+    )
+
   let assert Ok(bs_template) =
     bank_statement.parse_template(
       regexes: bs_regexes,
@@ -77,10 +89,7 @@ End
   let assert Ok(trans_template) =
     bank_transaction.parse_template(
       regexes: trans_regexes,
-      start_area: Some(split_regex.SplitAfter(start_trans_areas_regex)),
-      end_area: Some(split_regex.SplitBefore(end_trans_areas_regex)),
-      start: split_regex.SplitBefore(start_trans_regex),
-      end: split_regex.SplitBefore(end_trans_regex),
+      area: trans_area,
       booking_date: "{bd}",
       execution_date: Some("{ed}"),
       amount: "{a_sign|r(H,+)|r(S,-)}{a_big}.{a_small} EUR",

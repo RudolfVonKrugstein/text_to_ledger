@@ -1,10 +1,10 @@
 import data/date
 import data/money.{type Money}
-import data/regex
 import gleam/dynamic/decode
 import gleam/option.{type Option, None, Some}
 import gleam/result
 import input_loader/input_file.{type InputFile}
+import regex/regex
 import template/parser/parser
 import template/template
 
