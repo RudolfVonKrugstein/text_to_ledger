@@ -7,6 +7,7 @@ import gleam/json
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/regexp
+import input_loader/input_file
 
 /// A matcher matches a transaction to a ledger entry
 pub type Matcher {
@@ -21,6 +22,17 @@ pub type Matcher {
 
 pub type Matchers =
   List(Matcher)
+
+pub type Error {
+  NoMatch(input: input_file.InputFile)
+}
+
+pub fn error_string(e: Error) {
+  case e {
+    NoMatch(i) ->
+      "not matcher matched the input file:\n" <> input_file.to_string(i)
+  }
+}
 
 pub fn matcher_to_json(matcher: Matcher) -> json.Json {
   let Matcher(name:, source_accounts:, target_account:, text:, regex:) = matcher
@@ -123,7 +135,7 @@ pub fn try_match(
   case
     list.find(matchers, check_single_match(_, transaction, transaction_account))
   {
-    Error(_) -> Error("no matcher matched transaction")
+    Error(_) -> Error(NoMatch(transaction.origin))
     Ok(matcher) -> {
       Ok(
         ledger.LedgerEntry(

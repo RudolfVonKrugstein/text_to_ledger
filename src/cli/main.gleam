@@ -133,7 +133,7 @@ pub fn cli() {
     |> list.map(fn(t) {
       matcher.try_match(config.matchers, t, ":")
       |> result.map_error(fn(e) {
-        "Error trying to match transaction " <> t.subject <> ": " <> e
+        "Error trying to match transaction:\n" <> matcher.error_string(e)
       })
     }),
   ))
