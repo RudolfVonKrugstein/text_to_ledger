@@ -2,9 +2,8 @@ import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/string
-import input_loader/input_loader.{
-  type InputFile, type InputLoader, InputFile, InputLoader,
-}
+import input_loader/input_file.{type InputFile, InputFile}
+import input_loader/input_loader.{type InputLoader, InputLoader}
 import simplifile
 
 fn rec_list_files(dir: String, listing: List(String)) {
@@ -43,7 +42,9 @@ fn next_impl(
           "unable to read " <> f <> ": " <> string.inspect(e)
         }),
       )
-      Ok(Some(#(InputFile(f, content), InputLoader(fn() { next_impl(rest) }))))
+      Ok(
+        Some(#(InputFile(f, "", content), InputLoader(fn() { next_impl(rest) }))),
+      )
     }
   }
 }

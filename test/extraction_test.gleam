@@ -9,10 +9,14 @@ import gleam/list
 import gleam/option.{Some}
 import gleam/result
 import gleeunit/should
+import input_loader/input_file.{InputFile}
 
 pub fn data_extraction_test() {
   let input =
-    "Cool Bank - DE12456
+    InputFile(
+      name: "test",
+      title: "test input file",
+      content: "Cool Bank - DE12456
 Start Amount: 2.25 H on the 1.12.2025
 Final Amount: 2.00 S on the 31.12.2025
 
@@ -31,7 +35,8 @@ End
 
 # this looks like a transaction, but is none
 01. 01. Just a comment 0.01 S
-"
+",
+    )
 
   let assert Ok(bs_regexes) =
     result.all(list.map(
@@ -90,6 +95,7 @@ End
   should.equal(
     statement,
     bank_statement.BankStatement(
+      origin: input,
       bank: Some("CoolBank"),
       account: "DE12456",
       start_date: Some(date.Date(2025, 12, 1)),
@@ -103,6 +109,10 @@ End
   should.equal(
     list.first(transactions),
     Ok(bank_transaction.BankTransaction(
+      origin: InputFile(
+        ..input,
+        content: "3. 3. Transaction 1 0.25 S\nDetails\n",
+      ),
       subject: "Transaction 1Details",
       amount: money.Money(-25, 2, "EUR"),
       booking_date: date.Date(2025, 12, 3),
@@ -112,6 +122,10 @@ End
   should.equal(
     transactions |> list.drop(1) |> list.first,
     Ok(bank_transaction.BankTransaction(
+      origin: InputFile(
+        ..input,
+        content: "5. 6. Transaction 2 2.00 S\nDetails\nMore Details",
+      ),
       subject: "Transaction 2DetailsMore Details",
       amount: money.Money(-200, 2, "EUR"),
       booking_date: date.Date(2025, 12, 5),
@@ -121,6 +135,7 @@ End
   should.equal(
     transactions |> list.drop(2) |> list.first,
     Ok(bank_transaction.BankTransaction(
+      origin: InputFile(..input, content: "28. 31. Transaction 3 0.01 H\n"),
       subject: "Transaction 3",
       amount: money.Money(1, 2, "EUR"),
       booking_date: date.Date(2025, 12, 28),
@@ -130,6 +145,7 @@ End
   should.equal(
     transactions |> list.drop(3) |> list.first,
     Ok(bank_transaction.BankTransaction(
+      origin: InputFile(..input, content: "29. 31. Transaction 4 2.01 S"),
       subject: "Transaction 4",
       amount: money.Money(-201, 2, "EUR"),
       booking_date: date.Date(2025, 12, 29),

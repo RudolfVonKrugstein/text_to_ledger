@@ -1,14 +1,11 @@
 import gleam/option.{None, Some}
 import gleam/result
+import input_loader/input_file.{type InputFile}
 
 pub type InputLoader {
   InputLoader(
     next: fn() -> Result(option.Option(#(InputFile, InputLoader)), String),
   )
-}
-
-pub type InputFile {
-  InputFile(name: String, content: String)
 }
 
 pub fn next(loader: InputLoader) {

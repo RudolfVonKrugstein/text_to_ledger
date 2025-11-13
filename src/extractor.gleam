@@ -8,32 +8,37 @@ import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/string
+import input_loader/input_file
 import regexp_ext
 import template/template
 
 /// Collect variables by applying regexes and getting all values for named captures groups.
-fn collect_variables(regexes: List(regex.RegexWithOpts), doc: String) {
-  extend_variables(regexes, doc, template.empty_vars())
+fn collect_variables(
+  regexes: List(regex.RegexWithOpts),
+  input: input_file.InputFile,
+) {
+  extend_variables(regexes, input, template.empty_vars())
 }
 
 /// Extend variables by applying regexes and getting all values for named captures groups.
 fn extend_variables(
   regexes: List(regex.RegexWithOpts),
-  doc: String,
+  input: input_file.InputFile,
   start: template.Vars,
 ) {
   list.try_fold(regexes, start, fn(vars, regex) {
-    let captures = regexp_ext.capture_names(with: regex.regex, over: doc)
+    let captures =
+      regexp_ext.capture_names(with: regex.regex, over: input.content)
 
     case captures {
       [] if regex.optional == True -> Ok(vars)
       [] -> {
-        let short_doc = case string.length(doc) {
-          l if l < 256 -> doc
+        let short_doc = case string.length(input.content) {
+          l if l < 256 -> input.content
           l ->
-            string.drop_end(doc, l - 100)
+            string.drop_end(input.content, l - 100)
             <> " ... "
-            <> string.drop_start(doc, l - 100)
+            <> string.drop_start(input.content, l - 100)
         }
         Error(
           "required regex <"
@@ -76,23 +81,23 @@ pub fn option_render_template(
 }
 
 fn split_text_with_start_and_end(
-  input: String,
+  input: input_file.InputFile,
   start: split_regex.SplitRegex,
   end: Option(split_regex.SplitRegex),
 ) {
-  split_regex.split_all(start, input)
+  split_regex.split_all(start, input.content)
   |> list.drop(1)
   |> list.map(fn(begining) {
     case end |> option.then(split_regex.split(_, begining)) {
-      None -> begining
-      Some(#(begining, _)) -> begining
+      None -> input_file.InputFile(..input, content: begining)
+      Some(#(begining, _)) -> input_file.InputFile(..input, content: begining)
     }
   })
 }
 
 // Split the transactions texts from the original input.
 fn split_transactions(
-  input: String,
+  input: input_file.InputFile,
   trans_template: bank_transaction.BankTransactionTemplate,
 ) {
   // split the areas
@@ -181,7 +186,7 @@ fn extract_range_date(
 ///               If given is used to complete and verify the dates of the
 ///               transactions.
 fn extract_transaction_data(
-  input: String,
+  input: input_file.InputFile,
   trans_template: bank_transaction.BankTransactionTemplate,
   bank_vars: template.Vars,
   min_date: Option(date.Date),
@@ -213,6 +218,7 @@ fn extract_transaction_data(
 
   // The result
   Ok(bank_transaction.BankTransaction(
+    origin: input,
     subject:,
     amount:,
     booking_date:,
@@ -227,7 +233,7 @@ fn extract_transaction_data(
 /// - `bs_template`: Information on how to extract the data for the bank statement.
 /// - `trans_template`: Information on how to extract the data for the transcactions.
 pub fn extract_bank_statement_data(
-  input: String,
+  input: input_file.InputFile,
   bs_template: bank_statement.BankStatementTemplate,
   trans_template: bank_transaction.BankTransactionTemplate,
 ) {
@@ -262,6 +268,7 @@ pub fn extract_bank_statement_data(
   // fill the bank data
   let statement =
     bank_statement.BankStatement(
+      origin: input,
       bank:,
       account:,
       start_date:,

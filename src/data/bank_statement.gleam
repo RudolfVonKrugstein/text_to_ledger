@@ -4,6 +4,7 @@ import data/regex
 import gleam/dynamic/decode
 import gleam/option.{type Option, None, Some}
 import gleam/result
+import input_loader/input_file.{type InputFile}
 import template/parser/parser
 import template/template
 
@@ -13,6 +14,8 @@ import template/template
 /// If it is present it is used for sanity checks aand completing the transaction data.
 pub type BankStatement {
   BankStatement(
+    /// The document this comes from
+    origin: InputFile,
     /// The Bank the statement is from
     bank: Option(String),
     /// The account the statement is for
@@ -37,6 +40,7 @@ pub type BankStatement {
 }
 
 pub fn bank_statement_decoder() -> decode.Decoder(BankStatement) {
+  use origin <- decode.field("origin", input_file.input_file_decoder())
   use bank <- decode.optional_field(
     "bank",
     None,
@@ -64,6 +68,7 @@ pub fn bank_statement_decoder() -> decode.Decoder(BankStatement) {
     decode.optional(money.decode_money()),
   )
   decode.success(BankStatement(
+    origin:,
     bank:,
     account:,
     start_date:,

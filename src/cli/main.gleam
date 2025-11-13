@@ -10,7 +10,8 @@ import gleam/list
 import gleam/result
 import gleam/string
 import input_loader/directory_loader
-import input_loader/input_loader.{type InputFile}
+import input_loader/input_file.{type InputFile}
+import input_loader/input_loader
 import input_loader/paperless_loader
 import simplifile
 
@@ -31,7 +32,7 @@ pub fn find_matching_template(
     templates
     |> list.map(fn(t) {
       extractor.extract_bank_statement_data(
-        input_file.content,
+        input_file,
         t.statement,
         t.transaction,
       )
@@ -129,7 +130,12 @@ pub fn cli() {
 
   use ledger <- result.try(result.all(
     transactions
-    |> list.map(fn(t) { matcher.try_match(config.matchers, t, ":") }),
+    |> list.map(fn(t) {
+      matcher.try_match(config.matchers, t, ":")
+      |> result.map_error(fn(e) {
+        "Error trying to match transaction " <> t.subject <> ": " <> e
+      })
+    }),
   ))
   Ok(ledger)
 }

@@ -5,12 +5,15 @@ import data/split_regex
 import gleam/dynamic/decode
 import gleam/option.{type Option, None, Some}
 import gleam/result
+import input_loader/input_file.{type InputFile}
 import template/parser/parser
 import template/template
 
 /// A Bank Transaction extracted from the input dataz.
 pub type BankTransaction {
   BankTransaction(
+    /// The document this comes from
+    origin: InputFile,
     subject: String,
     amount: Money,
     booking_date: date.Date,
@@ -19,6 +22,7 @@ pub type BankTransaction {
 }
 
 pub fn bank_transaction_decoder() -> decode.Decoder(BankTransaction) {
+  use origin <- decode.field("origin", input_file.input_file_decoder())
   use subject <- decode.field("subject", decode.string)
   use amount <- decode.field("amount", money.decode_money())
   use booking_date <- decode.field("booking_date", date.decode_full_date())
@@ -27,6 +31,7 @@ pub fn bank_transaction_decoder() -> decode.Decoder(BankTransaction) {
     decode.optional(date.decode_full_date()),
   )
   decode.success(BankTransaction(
+    origin:,
     subject:,
     amount:,
     booking_date:,

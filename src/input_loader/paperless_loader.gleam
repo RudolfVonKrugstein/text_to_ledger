@@ -1,8 +1,8 @@
+import gleam/int
 import gleam/option.{type Option, None, Some}
 import gleam/result
-import input_loader/input_loader.{
-  type InputFile, type InputLoader, InputFile, InputLoader,
-}
+import input_loader/input_file.{type InputFile}
+import input_loader/input_loader.{type InputLoader, InputLoader}
 import paperless_api/document_types_request
 import paperless_api/documents_request
 import paperless_api/endpoint
@@ -28,7 +28,7 @@ fn next_impl(
     [a, ..rest], _ -> {
       Ok(
         Some(#(
-          InputFile(a.title, a.content),
+          input_file.InputFile(int.to_string(a.id), a.title, a.content),
           InputLoader(fn() { next_impl(rest, next_req) }),
         )),
       )
