@@ -1,4 +1,5 @@
 import gleam/dict
+import gleam/int
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/result
@@ -10,7 +11,7 @@ import gleam/string
 ///
 /// TODO: Explain how template strings work.
 pub type Template {
-  Template(parts: List(TemplatePart))
+  Template(input: String, parts: List(TemplatePart))
 }
 
 /// Parts of a template.
@@ -35,6 +36,28 @@ pub type TemplateMod {
 pub type Vars =
   dict.Dict(String, List(String))
 
+pub type RenderError {
+  ModParameterError(mod: String, parameters: List(String), msg: String)
+  ModApplyError(mod: String, msg: String)
+  UnkownModError(mod: String)
+  VariableNotFound(var: String)
+}
+
+pub fn error_string(e: RenderError) {
+  case e {
+    ModApplyError(mod:, msg:) -> "could not apply mod " <> mod <> ": " <> msg
+    ModParameterError(mod:, parameters:, msg:) ->
+      "wrong number of parameters for mod "
+      <> mod
+      <> ". Applied "
+      <> int.to_string(list.length(parameters))
+      <> " parameters. "
+      <> msg
+    UnkownModError(mod:) -> "mod " <> mod <> " is not known"
+    VariableNotFound(var:) -> "variable " <> var <> " not found"
+  }
+}
+
 /// New, empty vars
 pub fn empty_vars() {
   dict.new()
@@ -56,7 +79,10 @@ fn find_var(name: String, vars: Vars) {
 }
 
 /// Apply the "same" mod to a variable
-fn apply_same_mod(values: List(String), parameters: List(String)) {
+fn apply_same_mod(
+  values: List(String),
+  parameters: List(String),
+) -> Result(List(String), RenderError) {
   case parameters {
     [] ->
       case values {
@@ -64,47 +90,77 @@ fn apply_same_mod(values: List(String), parameters: List(String)) {
         [a] -> Ok([a])
         [a, b, ..cs] if a == b -> apply_same_mod([b, ..cs], parameters)
         [a, b, ..] ->
-          Error(
-            "same mod applied, but not all captures values are the same: "
-            <> a
-            <> " != "
-            <> b,
-          )
+          Error(ModApplyError(
+            mod: "same",
+            msg: "same mod applied, but not all captures values are the same ("
+              <> a
+              <> " != "
+              <> b
+              <> ")",
+          ))
       }
-    _ -> Error("same mod takes no parameters")
+    _ ->
+      Error(ModParameterError(
+        mod: "same",
+        parameters: parameters,
+        msg: "same takes no parameters",
+      ))
   }
 }
 
 /// Apply the "replace" mod to a variable
-fn apply_replace_mod(values: List(String), parameters: List(String)) {
+fn apply_replace_mod(
+  values: List(String),
+  parameters: List(String),
+) -> Result(List(String), RenderError) {
   case parameters {
     [orig, replace] ->
       Ok(list.map(values, fn(v) { string.replace(v, orig, replace) }))
-    _ -> Error("replace mod takes 2 parameters")
+    _ ->
+      Error(ModParameterError(
+        mod: "concat",
+        parameters: parameters,
+        msg: "mod takes 2 parameter",
+      ))
   }
 }
 
 /// Apply the "concat" mod to a variable
-fn apply_concat_mod(values: List(String), parameters: List(String)) {
+fn apply_concat_mod(
+  values: List(String),
+  parameters: List(String),
+) -> Result(List(String), RenderError) {
   case parameters {
     [] -> apply_concat_mod(values, [""])
     [sep] -> Ok([string.join(values, sep)])
-    _ -> Error("concat mod takes 1 parameter")
+    _ ->
+      Error(ModParameterError(
+        mod: "concat",
+        parameters: parameters,
+        msg: "mod takes 1 parameter",
+      ))
   }
 }
 
 /// Apply a mod to a variable
-fn apply_mod(values: List(String), mod: String, parameters: List(String)) {
+fn apply_mod(
+  values: List(String),
+  mod: String,
+  parameters: List(String),
+) -> Result(List(String), RenderError) {
   case mod {
     "same" -> apply_same_mod(values, parameters)
     "replace" | "r" -> apply_replace_mod(values, parameters)
     "concat" | "c" -> apply_concat_mod(values, parameters)
-    _ -> Error("unkown mod: " <> mod)
+    _ -> Error(UnkownModError(mod))
   }
 }
 
 /// Apply list of mods to a variable
-fn apply_mods(values: List(String), mods: List(TemplateMod)) {
+fn apply_mods(
+  values: List(String),
+  mods: List(TemplateMod),
+) -> Result(List(String), RenderError) {
   case mods {
     [] -> Ok(values)
     [Mod(name, parameters), ..mods] -> {
@@ -115,23 +171,25 @@ fn apply_mods(values: List(String), mods: List(TemplateMod)) {
 }
 
 /// Render a variable into a string.
-fn render_variable(name: String, mods: List(TemplateMod), vars: Vars) {
+fn render_variable(
+  name: String,
+  mods: List(TemplateMod),
+  vars: Vars,
+) -> Result(String, RenderError) {
   let values = find_var(name, vars) |> option.unwrap([])
 
   use values <- result.try(apply_mods(values, mods))
 
   use value <- result.try(
     list.first(values)
-    |> result.map_error(fn(_) {
-      "variable" <> name <> " has no matches or does not exist"
-    }),
+    |> result.map_error(fn(_) { VariableNotFound(var: name) }),
   )
 
   Ok(value)
 }
 
 /// Render the template into a string using variables from regex capture groups.
-pub fn render(temp: Template, vars: Vars) {
+pub fn render(temp: Template, vars: Vars) -> Result(String, RenderError) {
   use parts <- result.try(
     result.all(
       list.map(temp.parts, fn(part) {

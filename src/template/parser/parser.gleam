@@ -119,13 +119,14 @@ pub fn run(input: String) -> Result(template.Template, error.Error) {
     nibble.run(tokens, parser) |> result.map_error(error.ParseError),
   )
 
-  Ok(template.Template(parts:))
+  Ok(template.Template(input:, parts:))
 }
 
 pub fn decode_template() {
-  use template <- decode.then(decode.string)
-  case run(template) {
-    Error(e) -> decode.failure(template.Template([]), error.to_string(e))
+  use input <- decode.then(decode.string)
+  case run(input) {
+    Error(e) ->
+      decode.failure(template.Template(input:, parts: []), error.to_string(e))
     Ok(t) -> decode.success(t)
   }
 }

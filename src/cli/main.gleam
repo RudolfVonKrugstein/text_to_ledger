@@ -43,8 +43,9 @@ pub fn find_matching_template(
       Error(
         "no template matched the input text in "
         <> input_file.name
-        <> ": "
-        <> string.inspect(errors(matches)),
+        <> ":\n"
+        <> list.map(errors(matches), fn(e) { extractor.error_string(e) })
+        |> string.join("\n"),
       )
     [match] -> Ok(match)
     matches ->

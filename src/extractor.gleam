@@ -2,21 +2,51 @@ import data/bank_statement
 import data/bank_transaction
 import data/date
 import data/money
+import gleam/dict
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
-import gleam/string
 import input_loader/input_file
 import regex/area_regex
 import regex/regex
 import regexp_ext
 import template/template
 
+/// The errors that can happen through extraction
+pub type Error {
+  RegexMatchError(input: input_file.InputFile, regex: String)
+  TemplateRenderError(template: String, error: template.RenderError)
+  ParseMoneyError(value: String, msg: String)
+  ParseDateError(value: String, msg: String)
+  CompleteTransDateError(msg: String)
+}
+
+pub fn error_string(e: Error) -> String {
+  case e {
+    RegexMatchError(input:, regex:) ->
+      "Error matching regex:\n"
+      <> regex
+      <> "\non:\n"
+      <> input_file.to_string(input)
+    TemplateRenderError(template:, error:) ->
+      "Error rendering template:\n"
+      <> template
+      <> "error: "
+      <> template.error_string(error)
+    ParseDateError(value:, msg:) ->
+      "Unable to exract Money from " <> value <> ": " <> msg
+    ParseMoneyError(value:, msg:) ->
+      "Unable to exract Date from " <> value <> ": " <> msg
+    CompleteTransDateError(msg:) ->
+      "Unable to complete date of transaction: " <> msg
+  }
+}
+
 /// Collect variables by applying regexes and getting all values for named captures groups.
 fn collect_variables(
   regexes: List(regex.RegexWithOpts),
   input: input_file.InputFile,
-) {
+) -> Result(dict.Dict(String, List(String)), Error) {
   extend_variables(regexes, input, template.empty_vars())
 }
 
@@ -25,29 +55,14 @@ fn extend_variables(
   regexes: List(regex.RegexWithOpts),
   input: input_file.InputFile,
   start: template.Vars,
-) {
+) -> Result(dict.Dict(String, List(String)), Error) {
   list.try_fold(regexes, start, fn(vars, regex) {
     let captures =
       regexp_ext.capture_names(with: regex.regex, over: input.content)
 
     case captures {
       [] if regex.optional == True -> Ok(vars)
-      [] -> {
-        let short_doc = case string.length(input.content) {
-          l if l < 256 -> input.content
-          l ->
-            string.drop_end(input.content, l - 100)
-            <> " ... "
-            <> string.drop_start(input.content, l - 100)
-        }
-        Error(
-          "required regex <"
-          <> regex.original
-          <> "> does not match on doc: <"
-          <> short_doc
-          <> ">",
-        )
-      }
+      [] -> Error(RegexMatchError(input, regex.original))
       captures ->
         Ok(
           list.fold(list.flatten(captures), vars, fn(vars, capture) {
@@ -64,8 +79,8 @@ fn extend_variables(
 // a result. The `Option` and `Result` container are than swapped.
 pub fn option_map_result(
   opt: Option(a),
-  trans: fn(a) -> Result(b, String),
-) -> Result(Option(b), String) {
+  trans: fn(a) -> Result(b, e),
+) -> Result(Option(b), e) {
   case opt {
     None -> Ok(None)
     Some(val) -> trans(val) |> result.map(Some)
@@ -77,14 +92,21 @@ pub fn option_render_template(
   temp: Option(template.Template),
   vars: template.Vars,
 ) {
-  option_map_result(temp, template.render(_, vars))
+  option_map_result(temp, fn(temp) {
+    template.render(temp, vars)
+    |> result.map_error(fn(e) { TemplateRenderError(temp.input, e) })
+  })
 }
 
 // Helper function, rendering a variable and parsing it as money.
 fn extract_money(temp: template.Template, vars: template.Vars) {
-  use amount <- result.try(template.render(temp, vars))
+  use amount <- result.try(
+    template.render(temp, vars)
+    |> result.map_error(TemplateRenderError(temp.input, _)),
+  )
 
   money.parse_money(amount, Some("."), None)
+  |> result.map_error(fn(e) { ParseMoneyError(amount, e) })
 }
 
 // Helper function, rendering a variable and  parsing a partial date
@@ -94,16 +116,21 @@ fn extract_trans_date(
   vars: template.Vars,
   min_date: Option(date.Date),
   max_date: Option(date.Date),
-) -> Result(date.Date, String) {
-  use date <- result.try(template.render(temp, vars))
+) -> Result(date.Date, Error) {
+  use date <- result.try(
+    template.render(temp, vars)
+    |> result.map_error(TemplateRenderError(temp.input, _)),
+  )
 
-  use date <- result.try(date.parse_partial_date_with_day(
-    date,
-    ".",
-    date.DayMonthYear,
-  ))
+  use date <- result.try(
+    date.parse_partial_date_with_day(date, ".", date.DayMonthYear)
+    |> result.map_error(fn(e) { ParseDateError(date, e) }),
+  )
 
-  use date <- result.try(date.full_date_from_range(date, min_date, max_date))
+  use date <- result.try(
+    date.full_date_from_range(date, min_date, max_date)
+    |> result.map_error(fn(e) { CompleteTransDateError(msg: e) }),
+  )
 
   Ok(date)
 }
@@ -115,14 +142,16 @@ fn extract_range_date(
   temp: template.Template,
   vars: template.Vars,
   start: Bool,
-) -> Result(date.Date, String) {
-  use date <- result.try(template.render(temp, vars))
+) -> Result(date.Date, Error) {
+  use date <- result.try(
+    template.render(temp, vars)
+    |> result.map_error(TemplateRenderError(temp.input, _)),
+  )
 
-  use date <- result.try(date.parse_partial_date_with_year(
-    date,
-    ".",
-    date.DayMonthYear,
-  ))
+  use date <- result.try(
+    date.parse_partial_date_with_year(date, ".", date.DayMonthYear)
+    |> result.map_error(fn(e) { ParseDateError(date, e) }),
+  )
 
   case start {
     True -> Ok(date.first_possible_date(date))
@@ -148,7 +177,7 @@ fn extract_transaction_data(
   bank_vars: template.Vars,
   min_date: Option(date.Date),
   max_date: Option(date.Date),
-) {
+) -> Result(bank_transaction.BankTransaction, Error) {
   // collect transaction variables
   use trans_vars <- result.try(extend_variables(
     trans_template.regexes,
@@ -156,7 +185,10 @@ fn extract_transaction_data(
     bank_vars,
   ))
 
-  use subject <- result.try(template.render(trans_template.subject, trans_vars))
+  use subject <- result.try(
+    template.render(trans_template.subject, trans_vars)
+    |> result.map_error(TemplateRenderError(trans_template.subject.input, _)),
+  )
   use amount <- result.try(extract_money(trans_template.amount, trans_vars))
   use execution_date <- result.try(
     option_map_result(trans_template.exec_date, extract_trans_date(
@@ -193,12 +225,18 @@ pub fn extract_bank_statement_data(
   input: input_file.InputFile,
   bs_template: bank_statement.BankStatementTemplate,
   trans_template: bank_transaction.BankTransactionTemplate,
+) -> Result(
+  #(bank_statement.BankStatement, List(bank_transaction.BankTransaction)),
+  Error,
 ) {
   // collect bank variables
   use bank_vars <- result.try(collect_variables(bs_template.regexes, input))
 
   use bank <- result.try(option_render_template(bs_template.bank, bank_vars))
-  use account <- result.try(template.render(bs_template.account, bank_vars))
+  use account <- result.try(
+    template.render(bs_template.account, bank_vars)
+    |> result.map_error(TemplateRenderError(bs_template.account.input, _)),
+  )
 
   use start_date <- result.try(
     option_map_result(bs_template.start_date, extract_range_date(

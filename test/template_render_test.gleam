@@ -1,10 +1,11 @@
 import gleam/dict
 import gleeunit/should
+import template/parser/parser
 import template/template.{Template}
 
 pub fn simple_template_render_test() {
   // setup
-  let input = Template([template.Literal("test")])
+  let assert Ok(input) = parser.run("test")
 
   // act
   let result = template.render(input, dict.new())
@@ -15,7 +16,8 @@ pub fn simple_template_render_test() {
 
 pub fn two_literals_template_render_test() {
   // setup
-  let input = Template([template.Literal("test"), template.Literal("2")])
+  let input =
+    Template("test2", [template.Literal("test"), template.Literal("2")])
 
   // act
   let result = template.render(input, dict.new())
@@ -26,7 +28,7 @@ pub fn two_literals_template_render_test() {
 
 pub fn single_var_template_render_test() {
   // setup
-  let input = Template([template.Variable("test", [])])
+  let input = Template("{test}", [template.Variable("test", [])])
 
   // act
   let result = template.render(input, dict.from_list([#("test", ["val"])]))
@@ -37,7 +39,10 @@ pub fn single_var_template_render_test() {
 
 pub fn same_mod_render_test() {
   // setup
-  let input = Template([template.Variable("test", [template.Mod("same", [])])])
+  let input =
+    Template("{test|same}", [
+      template.Variable("test", [template.Mod("same", [])]),
+    ])
 
   // act
   let result = template.render(input, dict.from_list([#("test", ["val"])]))
@@ -48,7 +53,10 @@ pub fn same_mod_render_test() {
 
 pub fn same_mod_multi_var_render_test() {
   // setup
-  let input = Template([template.Variable("test", [template.Mod("same", [])])])
+  let input =
+    Template("{test|same}", [
+      template.Variable("test", [template.Mod("same", [])]),
+    ])
 
   // act
   let result =
@@ -60,7 +68,10 @@ pub fn same_mod_multi_var_render_test() {
 
 pub fn same_mod_multi_var_render_fail_test() {
   // setup
-  let input = Template([template.Variable("test", [template.Mod("same", [])])])
+  let input =
+    Template("{test|same}", [
+      template.Variable("test", [template.Mod("same", [])]),
+    ])
 
   // act
   let result =
@@ -73,11 +84,13 @@ pub fn same_mod_multi_var_render_fail_test() {
 pub fn same_mod_parameter_render_fail_test() {
   // setup
   let input =
-    Template([template.Variable("test", [template.Mod("same", ["para"])])])
+    Template("{test|same(para)}", [
+      template.Variable("test", [template.Mod("same", ["para"])]),
+    ])
 
   // act
   let result =
-    template.render(input, dict.from_list([#("test", ["val", "val2"])]))
+    template.render(input, dict.from_list([#("test", ["val", "val"])]))
 
   // test
   should.be_error(result)
@@ -86,7 +99,9 @@ pub fn same_mod_parameter_render_fail_test() {
 pub fn replace_mod_render_test() {
   // setup
   let input =
-    Template([template.Variable("test", [template.Mod("replace", ["v", "V"])])])
+    Template("{test|replace(v,V)}", [
+      template.Variable("test", [template.Mod("replace", ["v", "V"])]),
+    ])
 
   // act
   let result =
@@ -99,7 +114,9 @@ pub fn replace_mod_render_test() {
 pub fn replace_mod_concat_test() {
   // setup
   let input =
-    Template([template.Variable("test", [template.Mod("concat", ["-"])])])
+    Template("{test|concat(-)}", [
+      template.Variable("test", [template.Mod("concat", ["-"])]),
+    ])
 
   // act
   let result =
