@@ -11,7 +11,7 @@ import template/parser/parser
 import template/template
 
 pub type Enricher {
-  Extractor(
+  Enricher(
     name: Option(String),
     regexes: List(ExtractRegex),
     values: dict.Dict(String, template.Template),
@@ -32,7 +32,7 @@ pub fn decoder() -> decode.Decoder(Enricher) {
     "values",
     decode.dict(decode.string, parser.decode_template()),
   )
-  decode.success(Extractor(name:, regexes:, values:))
+  decode.success(Enricher(name:, regexes:, values:))
 }
 
 /// The errors that can happen through extraction
@@ -126,14 +126,14 @@ fn dict_map_values_error(
   })
 }
 
-pub fn extract(
+pub fn apply(
   data: ExtractedData,
-  extractor: Enricher,
+  enricher: Enricher,
 ) -> Result(ExtractedData, Error) {
-  use vars <- result.try(collect_variables(extractor.regexes, data))
+  use vars <- result.try(collect_variables(enricher.regexes, data))
 
   use new_values <- result.try(
-    extractor.values
+    enricher.values
     |> dict_map_values_error(fn(template) {
       template.render(template, vars)
       |> result.map_error(fn(error) {
@@ -145,11 +145,11 @@ pub fn extract(
   Ok(ExtractedData(..data, values: dict.merge(data.values, new_values)))
 }
 
-pub fn maybe_extract(
+pub fn try_apply(
   data: ExtractedData,
   extractor: Enricher,
 ) -> Result(Option(ExtractedData), Error) {
-  case extract(data, extractor) {
+  case apply(data, extractor) {
     Error(RegexMatchError(_, _)) -> Ok(None)
     Error(InputValueNotFound(_)) -> Ok(None)
     Error(e) -> Error(e)

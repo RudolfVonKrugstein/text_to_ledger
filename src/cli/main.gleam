@@ -32,7 +32,7 @@ fn extract_bank_statement_data(
   trans_areas: area_regex.AreaRegex,
 ) {
   // sheet data
-  use sheet_data <- result.try(enricher.extract(
+  use sheet_data <- result.try(enricher.apply(
     extracted_data.empty(input_file),
     sheet,
   ))
