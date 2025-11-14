@@ -1,9 +1,10 @@
 import cli/config
 import cli/parameters
-import data/matcher
-import data/sanity_check
+import data/ledger
+import data/transaction_sheet
 import dot_env
-import extractor
+import extractor/extracted_data
+import extractor/extractor
 import gleam/int
 import gleam/json
 import gleam/list
@@ -13,6 +14,7 @@ import input_loader/directory_loader
 import input_loader/input_file.{type InputFile}
 import input_loader/input_loader
 import input_loader/paperless_loader
+import regex/area_regex
 import simplifile
 
 pub fn errors(results: List(Result(a, e))) -> List(e) {
@@ -24,6 +26,27 @@ pub fn errors(results: List(Result(a, e))) -> List(e) {
   })
 }
 
+fn extract_bank_statement_data(
+  input_file: InputFile,
+  sheet: extractor.Extractor,
+  trans_areas: area_regex.AreaRegex,
+) {
+  // sheet data
+  use sheet_data <- result.try(extractor.extract(
+    extracted_data.empty(input_file),
+    sheet,
+  ))
+
+  let transactions =
+    area_regex.split(trans_areas, input_file.content)
+    |> list.map(fn(content) {
+      let input = input_file.InputFile(..input_file, content:)
+      extracted_data.ExtractedData(..sheet_data, input:)
+    })
+
+  Ok(#(sheet_data, transactions))
+}
+
 pub fn find_matching_template(
   input_file: InputFile,
   templates: List(config.TemplateConfig),
@@ -31,11 +54,7 @@ pub fn find_matching_template(
   let matches =
     templates
     |> list.map(fn(t) {
-      extractor.extract_bank_statement_data(
-        input_file,
-        t.statement,
-        t.transaction,
-      )
+      extract_bank_statement_data(input_file, t.sheet, t.transaction_areas)
     })
 
   case result.values(matches) {
@@ -57,7 +76,22 @@ pub fn find_matching_template(
 }
 
 pub fn extract_from_file(input_file: InputFile, config: config.Config) {
-  find_matching_template(input_file, config.templates)
+  use #(sheet, transactions) <- result.try(find_matching_template(
+    input_file,
+    config.templates,
+  ))
+
+  use sheet <- result.try(
+    transaction_sheet.from_extracted_data(sheet)
+    |> result.map_error(fn(e) { extracted_data.error_string(e) }),
+  )
+
+  use transactions <- result.try(
+    list.try_map(transactions, fn(t) { ledger.from_extracted_data(t, sheet) })
+    |> result.map_error(fn(e) { extracted_data.error_string(e) }),
+  )
+
+  Ok(#(sheet, transactions))
 }
 
 pub fn cli() {
@@ -116,34 +150,34 @@ pub fn cli() {
       extract_from_file(in_file, config)
     }),
   )
-
-  use _ <- result.try(
-    result.all(
-      extracted
-      |> list.map(fn(e) {
-        let #(s, ts) = e
-        sanity_check.sanity_checks(s, ts)
-      }),
-    )
-    |> result.map_error(string.inspect),
-  )
-
-  let transactions =
-    extracted
-    |> list.map(fn(e) {
-      let #(_, transactions) = e
-      transactions
-    })
-    |> list.flatten
-
-  use ledger <- result.try(result.all(
-    transactions
-    |> list.map(fn(t) {
-      matcher.try_match(config.matchers, t, ":")
-      |> result.map_error(fn(e) {
-        "Error trying to match transaction:\n" <> matcher.error_string(e)
-      })
-    }),
-  ))
-  Ok(ledger)
+  Ok(extracted)
+  // use _ <- result.try(
+  //   result.all(
+  //     extracted
+  //     |> list.map(fn(e) {
+  //       let #(s, ts) = e
+  //       sanity_check.sanity_checks(s, ts)
+  //     }),
+  //   )
+  //   |> result.map_error(string.inspect),
+  // )
+  //
+  // let transactions =
+  //   extracted
+  //   |> list.map(fn(e) {
+  //     let #(_, transactions) = e
+  //     transactions
+  //   })
+  //   |> list.flatten
+  // Ok(Nil)
+  // use ledger <- result.try(result.all(
+  //   transactions
+  //   |> list.map(fn(t) {
+  //     matcher.try_match(config.extractors, t, ":")
+  //     |> result.map_error(fn(e) {
+  //       "Error trying to match transaction:\n" <> matcher.error_string(e)
+  //     })
+  //   }),
+  // ))
+  // Ok(ledger)
 }

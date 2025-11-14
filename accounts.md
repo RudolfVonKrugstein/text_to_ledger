@@ -1,0 +1,54 @@
+# Account list
+
+- assets
+  - cashing
+    - private
+      - gls
+      - paypal
+      - gls_tagesgeld
+    - work
+      - gls
+  - receivable
+    - work
+      - consulting
+        - db
+- expenses
+  - living
+    - food
+      - grocery
+      - eating_out
+    - rent
+    - energy
+      - electric
+      - gas
+  - recreation
+    - activities
+    - hobby
+      - bike
+      - impro
+  - travel
+    - train
+    - plane
+  - insurance
+    - health
+      - barmer
+      - zahnzusatz
+    - haftpflicht
+  - tax
+    - turnover
+    - income
+      - soli
+    - capital
+      - soli
+  - work
+    - services
+    - travel
+      - train
+      - plane
+- income
+  - work
+    - consulting
+      - db
+- liability
+- equity
+  - balance

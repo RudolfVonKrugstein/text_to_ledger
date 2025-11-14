@@ -1,11 +1,22 @@
 import gleam/dynamic/decode
+import gleam/json
 import gleam/string
 
 pub type InputFile {
   InputFile(loader: String, name: String, title: String, content: String)
 }
 
-pub fn input_file_decoder() -> decode.Decoder(InputFile) {
+pub fn to_json(input_file: InputFile) -> json.Json {
+  let InputFile(loader:, name:, title:, content:) = input_file
+  json.object([
+    #("loader", json.string(loader)),
+    #("name", json.string(name)),
+    #("title", json.string(title)),
+    #("content", json.string(content)),
+  ])
+}
+
+pub fn decoder() -> decode.Decoder(InputFile) {
   use loader <- decode.field("loader", decode.string)
   use name <- decode.field("name", decode.string)
   use title <- decode.field("title", decode.string)

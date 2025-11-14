@@ -1,12 +1,9 @@
-import data/bank_statement
-import data/matcher
 import dot_env/env
-import gleam/dict
+import extractor/extractor
 import gleam/dynamic/decode
 import gleam/string
+import regex/area_regex
 import simplifile
-
-import data/bank_transaction
 
 /// A String, that can also be loaded from an external source
 pub fn external_string_decoder() {
@@ -90,48 +87,36 @@ fn input_config_decoder() -> decode.Decoder(InputConfig) {
 
 pub type TemplateConfig {
   TemplateConfig(
-    statement: bank_statement.BankStatementTemplate,
-    transaction: bank_transaction.BankTransactionTemplate,
+    sheet: extractor.Extractor,
+    transaction_areas: area_regex.AreaRegex,
   )
 }
 
 fn template_config_decoder() -> decode.Decoder(TemplateConfig) {
-  use statement <- decode.field(
-    "statement",
-    bank_statement.bank_statement_template_decoder(),
+  use sheet <- decode.field("sheet", extractor.decoder())
+  use transaction_areas <- decode.then(
+    area_regex.area_regex_optional_field_decoder("transaction_areas"),
   )
-  use transaction <- decode.field(
-    "transaction",
-    bank_transaction.bank_transaction_template_decoder(),
-  )
-  decode.success(TemplateConfig(statement:, transaction:))
+  decode.success(TemplateConfig(sheet:, transaction_areas:))
 }
 
 /// Config file for cli
 pub type Config {
   Config(
     /// Mappings from accound numbers to ledger accounts
-    account_mapping: dict.Dict(String, String),
     templates: List(TemplateConfig),
     input: InputConfig,
-    matchers: matcher.Matchers,
+    extractors: List(extractor.Extractor),
   )
 }
 
 pub fn config_decoder() -> decode.Decoder(Config) {
-  use account_mapping <- decode.field(
-    "account_mapping",
-    decode.dict(decode.string, decode.string),
-  )
   use templates <- decode.field(
     "templates",
     decode.list(template_config_decoder()),
   )
   use input <- decode.field("input", input_config_decoder())
-  use matchers <- decode.field(
-    "matchers",
-    decode.list(matcher.matcher_decoder()),
-  )
+  use extractors <- decode.field("extractors", decode.list(extractor.decoder()))
 
-  decode.success(Config(account_mapping:, templates:, input:, matchers:))
+  decode.success(Config(templates:, input:, extractors:))
 }

@@ -1,12 +1,17 @@
 import data/date
 import data/money.{type Money}
+import data/transaction_sheet
+import extractor/extracted_data
 import gleam/list
+import gleam/result
 import gleam/string
+import input_loader/input_file
 
 pub type LedgerEntry {
   LedgerEntry(
+    input: input_file.InputFile,
     date: date.Date,
-    subject: String,
+    payee: String,
     comment: String,
     lines: List(LedgerEntryLine),
   )
@@ -36,7 +41,52 @@ pub fn to_string(entry: LedgerEntry) {
   comment
   <> date.to_string(entry.date)
   <> " "
-  <> entry.subject
+  <> entry.payee
   <> "\n  "
   <> string.join(entry_lines, "\n  ")
+}
+
+pub fn from_extracted_data(
+  data: extracted_data.ExtractedData,
+  sheet: transaction_sheet.TransactionSheet,
+) {
+  use date <- result.try(extracted_data.get_trans_date(data, "date"))
+
+  use date <- result.try(
+    date.full_date_from_range(date, sheet.start_date, sheet.end_date)
+    |> result.map_error(fn(e) {
+      extracted_data.UnableToParse(
+        data:,
+        key: "date",
+        value: string.inspect(date),
+        msg: e,
+        value_type: "date",
+      )
+    }),
+  )
+
+  use amount <- result.try(extracted_data.get_money(data, "amunt"))
+
+  use payee <- result.try(extracted_data.get_string(data, "payee"))
+
+  use source_account <- result.try(extracted_data.get_string(
+    data,
+    "source_account",
+  ))
+
+  use target_account <- result.try(extracted_data.get_string(
+    data,
+    "target_account",
+  ))
+
+  Ok(
+    LedgerEntry(input: data.input, date:, payee:, comment: "", lines: [
+      LedgerEntryLine(account: source_account, amount:, comment: ""),
+      LedgerEntryLine(
+        account: target_account,
+        amount: money.negate(amount),
+        comment: "",
+      ),
+    ]),
+  )
 }

@@ -1,15 +1,16 @@
 //// Run sanity checks on the parsed data.
 
-import data/bank_statement
-import data/bank_transaction
 import data/date.{type Date}
+import data/ledger
 import data/money.{type Money}
+import data/transaction_sheet
 import gleam/list
 import gleam/option.{type Option, None, Some}
+import gleam/result
 
 pub type SanityError {
   TimeRangeMismatch(
-    transaction: bank_transaction.BankTransaction,
+    transaction: ledger.LedgerEntry,
     min: Option(Date),
     max: Option(Date),
   )
@@ -21,37 +22,43 @@ pub type SanityError {
 }
 
 pub fn check_time_range(
-  statement: bank_statement.BankStatement,
-  transaction: bank_transaction.BankTransaction,
+  sheet: transaction_sheet.TransactionSheet,
+  transaction: ledger.LedgerEntry,
 ) {
-  let after_start = case statement.start_date {
+  let after_start = case sheet.start_date {
     None -> True
-    Some(s) -> !date.is_before(transaction.booking_date, s)
+    Some(s) -> !date.is_before(transaction.date, s)
   }
-  let before_end = case statement.end_date {
+  let before_end = case sheet.end_date {
     None -> True
-    Some(e) -> !date.is_after(transaction.booking_date, e)
+    Some(e) -> !date.is_after(transaction.date, e)
   }
   case after_start && before_end {
     True -> Ok(Nil)
     False ->
       Error(TimeRangeMismatch(
         transaction:,
-        min: statement.start_date,
-        max: statement.end_date,
+        min: sheet.start_date,
+        max: sheet.end_date,
       ))
   }
 }
 
 pub fn check_balance(
-  statement: bank_statement.BankStatement,
-  transactions: List(bank_transaction.BankTransaction),
+  sheet: transaction_sheet.TransactionSheet,
+  transactions: List(ledger.LedgerEntry),
 ) {
-  case statement.start_amount, statement.end_amount {
+  case sheet.start_balance, sheet.end_balance {
     Some(start), Some(end) -> {
       let sum =
         list.fold(transactions, start, fn(acc, trans) {
-          money.add(acc, trans.amount)
+          money.add(
+            acc,
+            result.unwrap(
+              list.first(trans.lines) |> result.map(fn(l) { l.amount }),
+              money.Money(0, 0, ""),
+            ),
+          )
         })
       case money.equal(sum, end) {
         True -> Ok(Nil)
@@ -74,13 +81,13 @@ fn errors(vals: List(Result(a, e))) -> List(e) {
 }
 
 pub fn sanity_checks(
-  statement: bank_statement.BankStatement,
-  transactions: List(bank_transaction.BankTransaction),
+  sheet: transaction_sheet.TransactionSheet,
+  transactions: List(ledger.LedgerEntry),
 ) {
   case
     errors([
-      check_balance(statement, transactions),
-      ..list.map(transactions, fn(t) { check_time_range(statement, t) })
+      check_balance(sheet, transactions),
+      ..list.map(transactions, fn(t) { check_time_range(sheet, t) })
     ])
   {
     [] -> Ok(Nil)
