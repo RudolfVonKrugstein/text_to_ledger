@@ -10,7 +10,7 @@ import regexp_ext
 import template/parser/parser
 import template/template
 
-pub type Extractor {
+pub type Enricher {
   Extractor(
     name: Option(String),
     regexes: List(ExtractRegex),
@@ -18,7 +18,7 @@ pub type Extractor {
   )
 }
 
-pub fn decoder() -> decode.Decoder(Extractor) {
+pub fn decoder() -> decode.Decoder(Enricher) {
   use name <- decode.optional_field(
     "name",
     None,
@@ -128,7 +128,7 @@ fn dict_map_values_error(
 
 pub fn extract(
   data: ExtractedData,
-  extractor: Extractor,
+  extractor: Enricher,
 ) -> Result(ExtractedData, Error) {
   use vars <- result.try(collect_variables(extractor.regexes, data))
 
@@ -147,7 +147,7 @@ pub fn extract(
 
 pub fn maybe_extract(
   data: ExtractedData,
-  extractor: Extractor,
+  extractor: Enricher,
 ) -> Result(Option(ExtractedData), Error) {
   case extract(data, extractor) {
     Error(RegexMatchError(_, _)) -> Ok(None)

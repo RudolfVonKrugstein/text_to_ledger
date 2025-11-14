@@ -35,7 +35,7 @@
       }
     }
   }],
-  "extractors": [
+  "enrichers": [
     {
       "name": "date, amount and subject",
       "regexes": [

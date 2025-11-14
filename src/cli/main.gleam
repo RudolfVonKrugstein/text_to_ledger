@@ -3,8 +3,8 @@ import cli/parameters
 import data/ledger
 import data/transaction_sheet
 import dot_env
+import extractor/enricher
 import extractor/extracted_data
-import extractor/extractor
 import gleam/int
 import gleam/json
 import gleam/list
@@ -28,11 +28,11 @@ pub fn errors(results: List(Result(a, e))) -> List(e) {
 
 fn extract_bank_statement_data(
   input_file: InputFile,
-  sheet: extractor.Extractor,
+  sheet: enricher.Enricher,
   trans_areas: area_regex.AreaRegex,
 ) {
   // sheet data
-  use sheet_data <- result.try(extractor.extract(
+  use sheet_data <- result.try(enricher.extract(
     extracted_data.empty(input_file),
     sheet,
   ))
@@ -63,7 +63,7 @@ pub fn find_matching_template(
         "no template matched the input text in "
         <> input_file.name
         <> ":\n"
-        <> list.map(errors(matches), fn(e) { extractor.error_string(e) })
+        <> list.map(errors(matches), fn(e) { enricher.error_string(e) })
         |> string.join("\n"),
       )
     [match] -> Ok(match)

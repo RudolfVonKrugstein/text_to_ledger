@@ -1,5 +1,5 @@
 import dot_env/env
-import extractor/extractor
+import extractor/enricher
 import gleam/dynamic/decode
 import gleam/string
 import regex/area_regex
@@ -87,13 +87,13 @@ fn input_config_decoder() -> decode.Decoder(InputConfig) {
 
 pub type TemplateConfig {
   TemplateConfig(
-    sheet: extractor.Extractor,
+    sheet: enricher.Enricher,
     transaction_areas: area_regex.AreaRegex,
   )
 }
 
 fn template_config_decoder() -> decode.Decoder(TemplateConfig) {
-  use sheet <- decode.field("sheet", extractor.decoder())
+  use sheet <- decode.field("sheet", enricher.decoder())
   use transaction_areas <- decode.then(
     area_regex.area_regex_optional_field_decoder("transaction_areas"),
   )
@@ -106,7 +106,7 @@ pub type Config {
     /// Mappings from accound numbers to ledger accounts
     templates: List(TemplateConfig),
     input: InputConfig,
-    extractors: List(extractor.Extractor),
+    enrichers: List(enricher.Enricher),
   )
 }
 
@@ -116,7 +116,7 @@ pub fn config_decoder() -> decode.Decoder(Config) {
     decode.list(template_config_decoder()),
   )
   use input <- decode.field("input", input_config_decoder())
-  use extractors <- decode.field("extractors", decode.list(extractor.decoder()))
+  use enrichers <- decode.field("enrichers", decode.list(enricher.decoder()))
 
-  decode.success(Config(templates:, input:, extractors:))
+  decode.success(Config(templates:, input:, enrichers:))
 }
