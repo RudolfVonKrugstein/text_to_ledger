@@ -5,16 +5,17 @@ import data/transaction_sheet
 import dot_env
 import extractor/enricher
 import extractor/extracted_data
+import extractor/extractor
 import gleam/int
 import gleam/json
 import gleam/list
+import gleam/option.{None, Some}
 import gleam/result
 import gleam/string
 import input_loader/directory_loader
 import input_loader/input_file.{type InputFile}
 import input_loader/input_loader
 import input_loader/paperless_loader
-import regex/area_regex
 import simplifile
 
 pub fn errors(results: List(Result(a, e))) -> List(e) {
@@ -26,64 +27,55 @@ pub fn errors(results: List(Result(a, e))) -> List(e) {
   })
 }
 
-fn extract_bank_statement_data(
+pub fn find_matching_extractor(
   input_file: InputFile,
-  sheet: enricher.Enricher,
-  trans_areas: area_regex.AreaRegex,
-) {
-  // sheet data
-  use sheet_data <- result.try(enricher.apply(
-    extracted_data.empty(input_file),
-    sheet,
-  ))
-
-  let transactions =
-    area_regex.split(trans_areas, input_file.content)
-    |> list.map(fn(content) {
-      let input = input_file.InputFile(..input_file, content:)
-      extracted_data.ExtractedData(..sheet_data, input:)
-    })
-
-  Ok(#(sheet_data, transactions))
-}
-
-pub fn find_matching_template(
-  input_file: InputFile,
-  templates: List(config.TemplateConfig),
+  extractors: List(extractor.Extractor),
 ) {
   let matches =
-    templates
-    |> list.map(fn(t) {
-      extract_bank_statement_data(input_file, t.sheet, t.transaction_areas)
-    })
+    extractors
+    |> list.map(fn(e) { e.run(input_file) })
 
   case result.values(matches) {
     [] ->
       Error(
-        "no template matched the input text in "
+        "no extractor matched the input text in "
         <> input_file.name
         <> ":\n"
-        <> list.map(errors(matches), fn(e) { enricher.error_string(e) })
-        |> string.join("\n"),
+        <> errors(matches) |> string.join("\n"),
       )
     [match] -> Ok(match)
     matches ->
       Error(
         int.to_string(list.length(matches))
-        <> " templates matched the file, cannot decide which to use",
+        <> " extractors matched the file, cannot decide which to use",
       )
   }
 }
 
 pub fn extract_from_file(input_file: InputFile, config: config.Config) {
-  use #(sheet, transactions) <- result.try(find_matching_template(
+  use #(sheet, transactions) <- result.try(find_matching_extractor(
     input_file,
-    config.templates,
+    config.extractors,
   ))
 
   use sheet <- result.try(
     transaction_sheet.from_extracted_data(sheet)
     |> result.map_error(fn(e) { extracted_data.error_string(e) }),
+  )
+
+  use transactions <- result.try(
+    list.try_map(transactions, fn(trans) {
+      list.try_fold(config.enrichers, trans, fn(trans, enricher) {
+        use new_trans <- result.try(
+          enricher.try_apply(trans, enricher)
+          |> result.map_error(enricher.error_string),
+        )
+        case new_trans {
+          None -> Ok(trans)
+          Some(trans) -> Ok(trans)
+        }
+      })
+    }),
   )
 
   use transactions <- result.try(

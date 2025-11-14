@@ -1,8 +1,10 @@
 import dot_env/env
+import extractor/csv_extractor
 import extractor/enricher
+import extractor/extractor
+import extractor/text_extractor
 import gleam/dynamic/decode
 import gleam/string
-import regex/area_regex
 import simplifile
 
 /// A String, that can also be loaded from an external source
@@ -85,38 +87,39 @@ fn input_config_decoder() -> decode.Decoder(InputConfig) {
   }
 }
 
-pub type TemplateConfig {
-  TemplateConfig(
-    sheet: enricher.Enricher,
-    transaction_areas: area_regex.AreaRegex,
-  )
-}
-
-fn template_config_decoder() -> decode.Decoder(TemplateConfig) {
-  use sheet <- decode.field("sheet", enricher.decoder())
-  use transaction_areas <- decode.then(
-    area_regex.area_regex_optional_field_decoder("transaction_areas"),
-  )
-  decode.success(TemplateConfig(sheet:, transaction_areas:))
+pub fn extractor_decoder() -> decode.Decoder(extractor.Extractor) {
+  use variant <- decode.field("type", decode.string)
+  case variant {
+    "text" -> {
+      use config <- decode.then(text_extractor.config_decoder())
+      decode.success(text_extractor.new(config))
+    }
+    "csv" -> {
+      use config <- decode.then(csv_extractor.config_decoder())
+      decode.success(csv_extractor.new(config))
+    }
+    _ ->
+      decode.failure(
+        extractor.Extractor(fn(_) { Error("invalid") }),
+        "extractor type '" <> variant <> "' is not known",
+      )
+  }
 }
 
 /// Config file for cli
 pub type Config {
   Config(
     /// Mappings from accound numbers to ledger accounts
-    templates: List(TemplateConfig),
+    extractors: List(extractor.Extractor),
     input: InputConfig,
     enrichers: List(enricher.Enricher),
   )
 }
 
 pub fn config_decoder() -> decode.Decoder(Config) {
-  use templates <- decode.field(
-    "templates",
-    decode.list(template_config_decoder()),
-  )
+  use extractors <- decode.field("extractors", decode.list(extractor_decoder()))
   use input <- decode.field("input", input_config_decoder())
   use enrichers <- decode.field("enrichers", decode.list(enricher.decoder()))
 
-  decode.success(Config(templates:, input:, enrichers:))
+  decode.success(Config(extractors:, input:, enrichers:))
 }

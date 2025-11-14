@@ -2,6 +2,7 @@ import extractor/enricher
 import extractor/extracted_data
 import extractor/extractor
 import gleam/dict
+import gleam/dynamic/decode
 import gleam/int
 import gleam/list
 import gleam/result
@@ -13,9 +14,25 @@ pub type CsvValue {
   CsvValue(name: String, column: CsvColumn)
 }
 
+fn value_decoder() -> decode.Decoder(CsvValue) {
+  use name <- decode.field("name", decode.string)
+  use column <- decode.field("column", column_decoder())
+  decode.success(CsvValue(name:, column:))
+}
+
 pub type CsvColumn {
   ByIndex(index: Int)
   ByName(name: String)
+}
+
+fn column_decoder() -> decode.Decoder(CsvColumn) {
+  decode.one_of(
+    decode.field("index", decode.int, fn(i) { decode.success(ByIndex(i)) }),
+    [
+      decode.string |> decode.map(fn(n) { ByName(n) }),
+      decode.field("name", decode.string, fn(n) { decode.success(ByName(n)) }),
+    ],
+  )
 }
 
 pub type CsvExtractorConfig {
@@ -25,6 +42,14 @@ pub type CsvExtractorConfig {
     sheet: enricher.Enricher,
     values: List(CsvValue),
   )
+}
+
+pub fn config_decoder() -> decode.Decoder(CsvExtractorConfig) {
+  use with_headers <- decode.field("with_headers", decode.bool)
+  use seperator <- decode.optional_field("seperator", ",", decode.string)
+  use sheet <- decode.field("sheet", enricher.decoder())
+  use values <- decode.field("values", decode.list(value_decoder()))
+  decode.success(CsvExtractorConfig(with_headers:, seperator:, sheet:, values:))
 }
 
 fn get_transaction_data(

@@ -12,7 +12,7 @@ pub type AreaRegex {
   FullArea
 }
 
-pub fn area_regex_decoder() -> decode.Decoder(AreaRegex) {
+pub fn decoder() -> decode.Decoder(AreaRegex) {
   use start <- decode.field("start", split_regex.split_regex_decoder())
   use end <- decode.optional_field(
     "end",
@@ -20,17 +20,13 @@ pub fn area_regex_decoder() -> decode.Decoder(AreaRegex) {
     decode.optional(split_regex.split_regex_decoder()),
   )
 
-  use subarea <- decode.then(area_regex_optional_field_decoder("subarea"))
+  use subarea <- decode.then(optional_field_decoder("subarea"))
 
   decode.success(AreaSplit(start:, end:, subarea:))
 }
 
-pub fn area_regex_optional_field_decoder(field: String) {
-  use subarea <- decode.optional_field(
-    field,
-    None,
-    decode.optional(area_regex_decoder()),
-  )
+pub fn optional_field_decoder(field: String) {
+  use subarea <- decode.optional_field(field, None, decode.optional(decoder()))
   case subarea {
     None -> decode.success(FullArea)
     Some(a) -> decode.success(a)

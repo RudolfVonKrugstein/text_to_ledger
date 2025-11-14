@@ -1,6 +1,7 @@
 import extractor/enricher
 import extractor/extracted_data
 import extractor/extractor
+import gleam/dynamic/decode
 import gleam/list
 import gleam/result
 import input_loader/input_file
@@ -11,6 +12,15 @@ pub type TextExtractorConfig {
     sheet: enricher.Enricher,
     transaction_areas: area_regex.AreaRegex,
   )
+}
+
+pub fn config_decoder() -> decode.Decoder(TextExtractorConfig) {
+  use sheet <- decode.field("sheet", enricher.decoder())
+  use transaction_areas <- decode.field(
+    "transaction_areas",
+    area_regex.decoder(),
+  )
+  decode.success(TextExtractorConfig(sheet:, transaction_areas:))
 }
 
 fn run(input: input_file.InputFile, config: TextExtractorConfig) {

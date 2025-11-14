@@ -65,7 +65,7 @@ pub fn from_extracted_data(
     }),
   )
 
-  use amount <- result.try(extracted_data.get_money(data, "amunt"))
+  use amount <- result.try(extracted_data.get_money(data, "amount"))
 
   use payee <- result.try(extracted_data.get_string(data, "payee"))
 

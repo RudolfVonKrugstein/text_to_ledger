@@ -4,7 +4,8 @@
     "name": "home bank statements",
     "directory": "/home/nathan/bank_statements/"
   },
-  "templates": [{
+  "extractors": [{
+    "type": "text",
     "sheet":{
       "regexes": [
         "Kontonummer (?<an>[0-9]{10})",
@@ -55,7 +56,7 @@
       "name": "Tante Rübe", 
       "regexes": [
         {
-          "regex": "Tante Rübe",
+          "regex": ".*Tante Rübe.*",
           "on": "subject"
         },
         {
