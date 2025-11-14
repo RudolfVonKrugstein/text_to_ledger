@@ -1,4 +1,3 @@
-import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/string
@@ -18,7 +17,7 @@ fn rec_list_files(dir: String, listing: List(String)) {
         False -> Ok([path, ..rest])
         True -> {
           use sublisting <- result.try(simplifile.read_directory(path))
-          Ok(list.flatten([sublisting, rest]))
+          rec_list_files(path, sublisting)
         }
       }
     }
