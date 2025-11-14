@@ -1,3 +1,4 @@
+import extractor/extract_regex.{type ExtractRegex}
 import extractor/extracted_data.{type ExtractedData, ExtractedData}
 import gleam/dict
 import gleam/dynamic/decode
@@ -5,35 +6,9 @@ import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
 import input_loader/input_file
-import regex/regex
 import regexp_ext
 import template/parser/parser
 import template/template
-
-pub type ExtractRegex {
-  ExtractRegex(regex: regex.RegexWithOpts, on: Option(String))
-}
-
-fn extract_regex_decoder() -> decode.Decoder(ExtractRegex) {
-  decode.one_of(
-    {
-      use regex <- decode.then(regex.regex_opt_decoder())
-
-      decode.success(ExtractRegex(regex:, on: None))
-    },
-    [
-      {
-        use regex <- decode.field("regex", regex.regex_opt_decoder())
-        use on <- decode.optional_field(
-          "on",
-          None,
-          decode.optional(decode.string),
-        )
-        decode.success(ExtractRegex(regex:, on:))
-      },
-    ],
-  )
-}
 
 pub type Extractor {
   Extractor(
@@ -49,7 +24,10 @@ pub fn decoder() -> decode.Decoder(Extractor) {
     None,
     decode.optional(decode.string),
   )
-  use regexes <- decode.field("regexes", decode.list(extract_regex_decoder()))
+  use regexes <- decode.field(
+    "regexes",
+    decode.list(extract_regex.extract_regex_decoder()),
+  )
   use values <- decode.field(
     "values",
     decode.dict(decode.string, parser.decode_template()),
