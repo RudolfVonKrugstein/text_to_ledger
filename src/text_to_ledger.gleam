@@ -107,6 +107,7 @@ fn log_extract_from_file_error(
     log
     |> glight.with("file_name", file.name)
     |> glight.with("file_title", file.title)
+    |> glight.with("input_loader", file.loader)
   case err {
     main.EnricherError(err:) -> log |> log_enricher_error(err)
     main.ExtractedDataError(err) -> log |> log_extracted_data_error(err)

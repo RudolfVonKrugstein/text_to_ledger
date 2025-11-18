@@ -5,6 +5,7 @@ import gleam/dynamic/decode
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
+import regex/regex
 import regexp_ext
 import template/parser/parser
 import template/template
@@ -25,7 +26,33 @@ pub fn decoder() -> decode.Decoder(Enricher) {
   )
   use regexes <- decode.field(
     "regexes",
-    decode.list(extract_regex.extract_regex_decoder()),
+    decode.one_of(decode.list(extract_regex.extract_regex_decoder()), [
+      {
+        use dict <- decode.then(decode.dict(
+          decode.string,
+          decode.one_of(
+            {
+              use regex <- decode.then(regex.regex_opt_decoder())
+              decode.success([regex])
+            },
+            [
+              decode.list(regex.regex_opt_decoder()),
+            ],
+          ),
+        ))
+
+        decode.success(
+          dict.to_list(dict)
+          |> list.map(fn(e) {
+            let #(on, regexes) = e
+            list.map(regexes, fn(regex) {
+              extract_regex.ExtractRegex(regex:, on:)
+            })
+          })
+          |> list.flatten,
+        )
+      },
+    ]),
   )
   use values <- decode.field(
     "values",
@@ -76,8 +103,10 @@ fn extend_variables(
 ) -> Result(dict.Dict(String, List(String)), EnricherError) {
   list.try_fold(regexes, start, fn(vars, regex) {
     use target <- result.try(case regex.on {
-      None -> Ok(data.input.content)
-      Some(t) ->
+      "content" -> Ok(data.input.content)
+      "file.name" -> Ok(data.input.name)
+      "file.title" -> Ok(data.input.title)
+      t ->
         dict.get(data.values, t)
         |> result.map_error(fn(_) { InputValueNotFound(t) })
     })
