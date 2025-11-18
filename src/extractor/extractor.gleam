@@ -1,4 +1,7 @@
-import extractor/extracted_data
+import enricher/enricher
+import extracted_data/extracted_data
+import extractor/csv/csv_column
+import gsv
 import input_loader/input_file
 
 pub type Extractor {
@@ -6,7 +9,14 @@ pub type Extractor {
     run: fn(input_file.InputFile) ->
       Result(
         #(extracted_data.ExtractedData, List(extracted_data.ExtractedData)),
-        String,
+        ExtractorError,
       ),
   )
+}
+
+pub type ExtractorError {
+  EnricherError(enricher.EnricherError)
+  CsvError(gsv.Error)
+  CsvFileInvalid
+  CsvColumnNotFound(column: csv_column.CsvColumn)
 }

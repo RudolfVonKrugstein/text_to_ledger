@@ -13,7 +13,7 @@ pub type ExtractedData {
   ExtractedData(input: input_file.InputFile, values: dict.Dict(String, String))
 }
 
-pub type Error {
+pub type ExtractedDataError {
   KeyNotFound(data: ExtractedData, key: String)
   UnableToParse(
     data: ExtractedData,
@@ -24,7 +24,7 @@ pub type Error {
   )
 }
 
-pub fn error_string(e: Error) {
+pub fn error_string(e: ExtractedDataError) {
   case e {
     KeyNotFound(data:, key:) ->
       "key " <> key <> " not found in data extracted:\n" <> to_string(data)

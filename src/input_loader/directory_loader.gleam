@@ -1,22 +1,31 @@
 import gleam/option.{type Option, None, Some}
 import gleam/result
-import gleam/string
+import input_loader/error.{type InputLoaderError, ReadDirectoryError}
 import input_loader/input_file.{type InputFile, InputFile}
 import input_loader/input_loader.{type InputLoader, InputLoader}
 import simplifile
 
-fn rec_list_files(dir: String, listing: List(String)) {
+fn rec_list_files(
+  dir: String,
+  listing: List(String),
+) -> Result(List(String), InputLoaderError) {
   case listing {
     [] -> Ok([])
     [f, ..rest] -> {
       use rest <- result.try(rec_list_files(dir, rest))
 
       let path = dir <> "/" <> f
-      use is_dir <- result.try(simplifile.is_directory(path))
+      use is_dir <- result.try(
+        simplifile.is_directory(path)
+        |> result.map_error(ReadDirectoryError(path, _)),
+      )
       case is_dir {
         False -> Ok([path, ..rest])
         True -> {
-          use sublisting <- result.try(simplifile.read_directory(path))
+          use sublisting <- result.try(
+            simplifile.read_directory(path)
+            |> result.map_error(ReadDirectoryError(path, _)),
+          )
           rec_list_files(path, sublisting)
         }
       }
@@ -25,22 +34,23 @@ fn rec_list_files(dir: String, listing: List(String)) {
 }
 
 fn rec_read_directory(dir: String) {
-  use listing <- result.try(simplifile.read_directory(dir))
+  use listing <- result.try(
+    simplifile.read_directory(dir)
+    |> result.map_error(ReadDirectoryError(dir, _)),
+  )
   rec_list_files(dir, listing)
 }
 
 fn next_impl(
   loader_name: String,
   all: List(String),
-) -> Result(Option(#(InputFile, InputLoader)), String) {
+) -> Result(Option(#(InputFile, InputLoader)), InputLoaderError) {
   case all {
     [] -> Ok(None)
     [f, ..rest] -> {
       use content <- result.try(
         simplifile.read(f)
-        |> result.map_error(fn(e) {
-          "unable to read " <> f <> ": " <> string.inspect(e)
-        }),
+        |> result.map_error(ReadDirectoryError(f, _)),
       )
       Ok(
         Some(#(

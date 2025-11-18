@@ -1,7 +1,6 @@
 import gleam/dynamic/decode
 import gleam/hackney
 import gleam/http/request
-import gleam/http/response
 import gleam/json
 import gleam/list
 import gleam/option.{type Option, None, Some}
@@ -9,6 +8,7 @@ import gleam/result
 import gleam/string
 import gleam/uri
 import paperless_api/endpoint.{type PaperlessEndpoint}
+import paperless_api/error
 import paperless_api/models/paged_response
 
 pub type PagedRequest(a) {
@@ -19,33 +19,17 @@ pub type PagedRequest(a) {
   )
 }
 
-pub type Error {
-  HttpError(hackney.Error)
-  ResponseError(response.Response(String))
-  DecodeError(json.DecodeError)
-  Simple(String)
-}
-
-pub fn error_string(e: Error) {
-  case e {
-    HttpError(err) -> "http error: " <> string.inspect(err)
-    ResponseError(resp) -> "unexpected response: " <> string.inspect(resp)
-    DecodeError(err) -> "decoding response error: " <> string.inspect(err)
-    Simple(err) -> err
-  }
-}
-
 pub fn new(
   ep: PaperlessEndpoint,
   path: String,
   query: Option(String),
   decode: decode.Decoder(a),
-) -> Result(PagedRequest(a), Error) {
+) -> Result(PagedRequest(a), error.PaperlessApiError) {
   let uri = uri.Uri(..ep.base_url, path: ep.base_url.path <> path, query: query)
   // Prepare a HTTP request record
   use req <- result.try(
     result.map_error(request.from_uri(uri), fn(_) {
-      Simple("unable to parse request url: " <> path)
+      error.Simple("unable to parse request url: " <> path)
     }),
   )
 
@@ -58,18 +42,20 @@ pub fn new(
 
 pub fn run_request(
   req: PagedRequest(a),
-) -> Result(#(List(a), Option(PagedRequest(a))), Error) {
-  use resp <- result.try(hackney.send(req.req) |> result.map_error(HttpError))
+) -> Result(#(List(a), Option(PagedRequest(a))), error.PaperlessApiError) {
+  use resp <- result.try(
+    hackney.send(req.req) |> result.map_error(error.HttpError),
+  )
   use _ <-
     fn(next) {
       case resp.status {
         200 -> next(Nil)
-        _ -> Error(ResponseError(resp))
+        _ -> Error(error.ResponseError(resp))
       }
     }
   use dec_resp <- result.try(
     json.parse(resp.body, paged_response.page_response_decoder(req.decode))
-    |> result.map_error(DecodeError),
+    |> result.map_error(error.DecodeError),
   )
   use next <- result.try(get_next(req, dec_resp))
   Ok(#(dec_resp.results, next))
@@ -85,14 +71,14 @@ fn remove_prefix(orig: String, prefix: String) {
 fn get_next(
   last_req: PagedRequest(a),
   resp: paged_response.PageResponse(a),
-) -> Result(option.Option(PagedRequest(a)), Error) {
+) -> Result(option.Option(PagedRequest(a)), error.PaperlessApiError) {
   case resp.next {
     None -> Ok(None)
     Some(url) -> {
       use url <- result.try(
         uri.parse(url)
         |> result.map_error(fn(_nil) {
-          Simple("unable to parse next url: " <> url)
+          error.Simple("unable to parse next url: " <> url)
         }),
       )
       use new_req <- result.try(new(
@@ -106,7 +92,7 @@ fn get_next(
   }
 }
 
-pub fn run_all(req: PagedRequest(a)) -> Result(List(a), Error) {
+pub fn run_all(req: PagedRequest(a)) -> Result(List(a), error.PaperlessApiError) {
   use #(page, next) <- result.try(run_request(req))
   case next {
     None -> Ok(page)

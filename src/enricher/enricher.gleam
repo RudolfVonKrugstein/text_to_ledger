@@ -1,11 +1,10 @@
+import extracted_data/extracted_data.{type ExtractedData, ExtractedData}
 import extractor/extract_regex.{type ExtractRegex}
-import extractor/extracted_data.{type ExtractedData, ExtractedData}
 import gleam/dict
 import gleam/dynamic/decode
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
-import input_loader/input_file
 import regexp_ext
 import template/parser/parser
 import template/template
@@ -36,19 +35,16 @@ pub fn decoder() -> decode.Decoder(Enricher) {
 }
 
 /// The errors that can happen through extraction
-pub type Error {
-  RegexMatchError(input: input_file.InputFile, regex: String)
+pub type EnricherError {
+  RegexMatchError(string: String, regex: String)
   TemplateRenderError(template: String, error: template.RenderError)
   InputValueNotFound(name: String)
 }
 
-pub fn error_string(e: Error) -> String {
+pub fn error_string(e: EnricherError) -> String {
   case e {
-    RegexMatchError(input:, regex:) ->
-      "Error matching regex:\n"
-      <> regex
-      <> "\non:\n"
-      <> input_file.to_string(input)
+    RegexMatchError(string:, regex:) ->
+      "Error matching regex:\n" <> regex <> "\non:\n" <> string
     TemplateRenderError(template:, error:) ->
       "Error rendering template:\n"
       <> template
@@ -68,7 +64,7 @@ pub fn error_string(e: Error) -> String {
 fn collect_variables(
   regexes: List(ExtractRegex),
   data: ExtractedData,
-) -> Result(dict.Dict(String, List(String)), Error) {
+) -> Result(dict.Dict(String, List(String)), EnricherError) {
   extend_variables(regexes, data, template.empty_vars())
 }
 
@@ -77,7 +73,7 @@ fn extend_variables(
   regexes: List(ExtractRegex),
   data: ExtractedData,
   start: template.Vars,
-) -> Result(dict.Dict(String, List(String)), Error) {
+) -> Result(dict.Dict(String, List(String)), EnricherError) {
   list.try_fold(regexes, start, fn(vars, regex) {
     use target <- result.try(case regex.on {
       None -> Ok(data.input.content)
@@ -90,7 +86,7 @@ fn extend_variables(
 
     case captures {
       [] if regex.regex.optional == True -> Ok(vars)
-      [] -> Error(RegexMatchError(data.input, regex.regex.original))
+      [] -> Error(RegexMatchError(target, regex.regex.original))
       captures ->
         Ok(
           list.fold(list.flatten(captures), vars, fn(vars, capture) {
@@ -129,7 +125,7 @@ fn dict_map_values_error(
 pub fn apply(
   data: ExtractedData,
   enricher: Enricher,
-) -> Result(ExtractedData, Error) {
+) -> Result(ExtractedData, EnricherError) {
   use vars <- result.try(collect_variables(enricher.regexes, data))
 
   use new_values <- result.try(
@@ -148,7 +144,7 @@ pub fn apply(
 pub fn try_apply(
   data: ExtractedData,
   extractor: Enricher,
-) -> Result(Option(ExtractedData), Error) {
+) -> Result(Option(ExtractedData), EnricherError) {
   case apply(data, extractor) {
     Error(RegexMatchError(_, _)) -> Ok(None)
     Error(InputValueNotFound(_)) -> Ok(None)

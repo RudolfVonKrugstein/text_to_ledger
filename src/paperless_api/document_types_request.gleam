@@ -2,12 +2,13 @@ import gleam/list
 import gleam/option.{None}
 import gleam/result
 import paperless_api/endpoint.{type PaperlessEndpoint}
+import paperless_api/error
 import paperless_api/models/document_type
-import paperless_api/paged_request.{type Error, type PagedRequest}
+import paperless_api/paged_request.{type PagedRequest}
 
 pub fn new(
   endpoint: PaperlessEndpoint,
-) -> Result(PagedRequest(document_type.DocumentType), Error) {
+) -> Result(PagedRequest(document_type.DocumentType), error.PaperlessApiError) {
   paged_request.new(
     endpoint,
     "/api/document_types/",

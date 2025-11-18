@@ -1,7 +1,7 @@
 import data/date
 import data/money.{type Money}
 import data/transaction_sheet
-import extractor/extracted_data
+import extracted_data/extracted_data
 import gleam/list
 import gleam/result
 import gleam/string

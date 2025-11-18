@@ -1,6 +1,6 @@
 import data/date
 import data/money.{type Money}
-import extractor/extracted_data
+import extracted_data/extracted_data
 import gleam/dynamic/decode
 import gleam/option.{type Option, None}
 import gleam/result
@@ -64,7 +64,9 @@ pub fn transaction_sheet_decoder() -> decode.Decoder(TransactionSheet) {
   ))
 }
 
-pub fn from_extracted_data(data: extracted_data.ExtractedData) {
+pub fn from_extracted_data(
+  data: extracted_data.ExtractedData,
+) -> Result(TransactionSheet, extracted_data.ExtractedDataError) {
   use start_date <- result.try(extracted_data.get_optional_range_date(
     data,
     "start_date",

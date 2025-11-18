@@ -4,14 +4,15 @@ import gleam/list
 import gleam/option.{None, Some}
 import gleam/string
 import paperless_api/endpoint.{type PaperlessEndpoint}
+import paperless_api/error
 import paperless_api/models/document
 import paperless_api/models/document_type
 import paperless_api/models/tag
-import paperless_api/paged_request.{type Error, type PagedRequest, PagedRequest}
+import paperless_api/paged_request.{type PagedRequest, PagedRequest}
 
 pub fn new(
   ep: PaperlessEndpoint,
-) -> Result(PagedRequest(document.Document), Error) {
+) -> Result(PagedRequest(document.Document), error.PaperlessApiError) {
   paged_request.new(ep, "/api/documents/", None, document.document_decoder())
 }
 

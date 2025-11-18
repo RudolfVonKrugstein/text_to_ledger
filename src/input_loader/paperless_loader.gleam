@@ -1,6 +1,7 @@
 import gleam/int
 import gleam/option.{type Option, None, Some}
 import gleam/result
+import input_loader/error.{type InputLoaderError, PaperlessApiError}
 import input_loader/input_file.{type InputFile}
 import input_loader/input_loader.{type InputLoader, InputLoader}
 import paperless_api/document_types_request
@@ -14,7 +15,7 @@ fn next_impl(
   loader_name: String,
   page: List(document.Document),
   next_req: Option(paged_request.PagedRequest(document.Document)),
-) -> Result(Option(#(InputFile, InputLoader)), String) {
+) -> Result(Option(#(InputFile, InputLoader)), InputLoaderError) {
   case page, next_req {
     [], None -> {
       Ok(None)
@@ -22,7 +23,7 @@ fn next_impl(
     [], Some(next_req) -> {
       use #(page, next_req) <- result.try(
         paged_request.run_request(next_req)
-        |> result.map_error(paged_request.error_string),
+        |> result.map_error(PaperlessApiError),
       )
       next_impl(loader_name, page, next_req)
     }
@@ -49,25 +50,27 @@ pub fn new(
   allowed_tags: List(String),
   forbidden_tags: List(String),
   document_types: List(String),
-) -> Result(InputLoader, String) {
-  use endpoint <- result.try(endpoint.parse(url, token))
+) -> Result(InputLoader, InputLoaderError) {
+  use endpoint <- result.try(
+    endpoint.parse(url, token) |> result.map_error(PaperlessApiError),
+  )
 
   use allowed_tags <- result.try(
     tags_request.get_tags_by_slugs(endpoint, allowed_tags)
-    |> result.map_error(paged_request.error_string),
+    |> result.map_error(PaperlessApiError),
   )
   use forbidden_tags <- result.try(
     tags_request.get_tags_by_slugs(endpoint, forbidden_tags)
-    |> result.map_error(paged_request.error_string),
+    |> result.map_error(PaperlessApiError),
   )
   use doc_types <- result.try(
     document_types_request.get_document_types_by_slugs(endpoint, document_types)
-    |> result.map_error(paged_request.error_string),
+    |> result.map_error(PaperlessApiError),
   )
 
   use doc_req <- result.try(
     documents_request.new(endpoint)
-    |> result.map_error(paged_request.error_string),
+    |> result.map_error(PaperlessApiError),
   )
 
   let doc_req =
