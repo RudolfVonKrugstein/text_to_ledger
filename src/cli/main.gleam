@@ -1,6 +1,6 @@
+import cli/command
 import cli/config/config
 import cli/config/input_config
-import cli/parameters
 import data/ledger
 import data/transaction_sheet
 import dot_env
@@ -102,28 +102,28 @@ pub fn cli() {
 
   log |> glight.debug("parsing input parameters")
 
-  use parameters <- result.try(
-    parameters.parameters() |> result.map_error(ParseParameterError),
+  use command <- result.try(
+    command.parse() |> result.map_error(ParseParameterError),
   )
 
   log
-  |> glight.with("config", parameters.config)
+  |> glight.with("config", command.config)
   |> glight.debug("parsed input parameters")
 
   log
-  |> glight.with("config_file", parameters.config)
+  |> glight.with("config_file", command.config)
   |> glight.info("loading config")
 
   use config <- result.try(
-    simplifile.read(from: parameters.config)
-    |> result.map_error(ReadConfigError(parameters.config, _)),
+    simplifile.read(from: command.config)
+    |> result.map_error(ReadConfigError(command.config, _)),
   )
 
   log |> glight.debug("parsing config")
 
   use config <- result.try(
     json.parse(config, config.config_decoder())
-    |> result.map_error(DecodeConfigError(parameters.config, _)),
+    |> result.map_error(DecodeConfigError(command.config, _)),
   )
 
   log
@@ -139,22 +139,27 @@ pub fn cli() {
   log
   |> glight.info("running extractor")
 
-  use extracted <- result.try(
-    input_loader.try_load_all(input_loader, fn(in_file) {
-      log
-      |> glight.with("file_id", in_file.name)
-      |> glight.info("extracting data from file")
+  case command {
+    command.RunParameters(_) -> {
+      use extracted <- result.try(
+        input_loader.try_load_all(input_loader, fn(in_file) {
+          log
+          |> glight.with("file_id", in_file.name)
+          |> glight.info("extracting data from file")
 
-      extract_from_file(in_file, config)
-    })
-    |> result.map_error(fn(te) {
-      case te {
-        input_loader.LoaderError(e) -> InputLoaderError(e)
-        input_loader.FuncError(f, e) -> ExtractFromFileError(f, e)
-      }
-    }),
-  )
-  Ok(extracted)
+          extract_from_file(in_file, config)
+        })
+        |> result.map_error(fn(te) {
+          case te {
+            input_loader.LoaderError(e) -> InputLoaderError(e)
+            input_loader.FuncError(f, e) -> ExtractFromFileError(f, e)
+          }
+        }),
+      )
+      Ok(extracted)
+    }
+    command.TestEnrichersParameters(config:, extra_enrichers:) -> todo
+  }
   // use _ <- result.try(
   //   result.all(
   //     extracted
