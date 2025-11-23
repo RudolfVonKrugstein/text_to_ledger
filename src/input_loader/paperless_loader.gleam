@@ -12,6 +12,8 @@ import paperless_api/paged_request
 import paperless_api/tags_request
 
 fn next_impl(
+  progress: Int,
+  total_docs: Option(Int),
   loader_name: String,
   page: List(document.Document),
   next_req: Option(paged_request.PagedRequest(document.Document)),
@@ -25,7 +27,7 @@ fn next_impl(
         paged_request.run_request(next_req)
         |> result.map_error(PaperlessApiError),
       )
-      next_impl(loader_name, page, next_req)
+      next_impl(progress, Some(page.count), loader_name, page.results, next_req)
     }
     [a, ..rest], _ -> {
       Ok(
@@ -35,8 +37,12 @@ fn next_impl(
             int.to_string(a.id),
             a.title,
             a.content,
+            progress,
+            total_docs,
           ),
-          InputLoader(fn() { next_impl(loader_name, rest, next_req) }),
+          InputLoader(fn() {
+            next_impl(progress + 1, total_docs, loader_name, rest, next_req)
+          }),
         )),
       )
     }
@@ -79,5 +85,5 @@ pub fn new(
     |> documents_request.set_tag_filter(allowed_tags)
     |> documents_request.set_not_tag_filter(forbidden_tags)
 
-  Ok(InputLoader(fn() { next_impl(name, [], Some(doc_req)) }))
+  Ok(InputLoader(fn() { next_impl(0, None, name, [], Some(doc_req)) }))
 }

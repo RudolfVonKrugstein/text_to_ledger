@@ -9,7 +9,7 @@ import gleam/string
 import gleam/uri
 import paperless_api/endpoint.{type PaperlessEndpoint}
 import paperless_api/error
-import paperless_api/models/paged_response
+import paperless_api/models/paged_response.{type PageResponse}
 
 pub type PagedRequest(a) {
   PagedRequest(
@@ -42,7 +42,10 @@ pub fn new(
 
 pub fn run_request(
   req: PagedRequest(a),
-) -> Result(#(List(a), Option(PagedRequest(a))), error.PaperlessApiError) {
+) -> Result(
+  #(PageResponse(a), Option(PagedRequest(a))),
+  error.PaperlessApiError,
+) {
   use resp <- result.try(
     hackney.send(req.req) |> result.map_error(error.HttpError),
   )
@@ -58,7 +61,7 @@ pub fn run_request(
     |> result.map_error(error.DecodeError),
   )
   use next <- result.try(get_next(req, dec_resp))
-  Ok(#(dec_resp.results, next))
+  Ok(#(dec_resp, next))
 }
 
 fn remove_prefix(orig: String, prefix: String) {
@@ -70,7 +73,7 @@ fn remove_prefix(orig: String, prefix: String) {
 
 fn get_next(
   last_req: PagedRequest(a),
-  resp: paged_response.PageResponse(a),
+  resp: PageResponse(a),
 ) -> Result(option.Option(PagedRequest(a)), error.PaperlessApiError) {
   case resp.next {
     None -> Ok(None)
@@ -95,10 +98,10 @@ fn get_next(
 pub fn run_all(req: PagedRequest(a)) -> Result(List(a), error.PaperlessApiError) {
   use #(page, next) <- result.try(run_request(req))
   case next {
-    None -> Ok(page)
+    None -> Ok(page.results)
     Some(next) -> {
       use rest <- result.try(run_all(next))
-      Ok(list.flatten([page, rest]))
+      Ok(list.flatten([page.results, rest]))
     }
   }
 }

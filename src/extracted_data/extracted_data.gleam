@@ -14,32 +14,8 @@ pub type ExtractedData {
 }
 
 pub type ExtractedDataError {
-  KeyNotFound(data: ExtractedData, key: String)
-  UnableToParse(
-    data: ExtractedData,
-    key: String,
-    value: String,
-    msg: String,
-    value_type: String,
-  )
-}
-
-pub fn error_string(e: ExtractedDataError) {
-  case e {
-    KeyNotFound(data:, key:) ->
-      "key " <> key <> " not found in data extracted:\n" <> to_string(data)
-    UnableToParse(data:, key:, value:, msg:, value_type:) ->
-      "unable to parse "
-      <> value
-      <> " as "
-      <> value_type
-      <> " coming from value "
-      <> key
-      <> ": "
-      <> msg
-      <> ". data:\n"
-      <> to_string(data)
-  }
+  KeyNotFound(key: String)
+  UnableToParse(key: String, value: String, msg: String, value_type: String)
 }
 
 pub fn empty(input: input_file.InputFile) {
@@ -81,14 +57,14 @@ pub fn get_optional_string(data: ExtractedData, var: String) {
 
 pub fn get_string(data: ExtractedData, var: String) {
   dict.get(data.values, var)
-  |> result.map_error(fn(_) { KeyNotFound(data, var) })
+  |> result.map_error(fn(_) { KeyNotFound(var) })
 }
 
 pub fn get_money(data: ExtractedData, var: String) {
   use money <- result.try(get_string(data, var))
 
   money.parse_money(money, Some("."), None)
-  |> result.map_error(UnableToParse(data, var, money, _, "money"))
+  |> result.map_error(UnableToParse(var, money, _, "money"))
 }
 
 pub fn get_optional_money(data: ExtractedData, var: String) {
@@ -97,7 +73,7 @@ pub fn get_optional_money(data: ExtractedData, var: String) {
     Some(money) -> {
       money.parse_money(money, Some("."), None)
       |> result.map(Some)
-      |> result.map_error(UnableToParse(data, var, money, _, "money"))
+      |> result.map_error(UnableToParse(var, money, _, "money"))
     }
   }
 }
@@ -106,14 +82,14 @@ pub fn get_trans_date(data: ExtractedData, var: String) {
   use date <- result.try(get_string(data, var))
 
   date.parse_partial_date_with_day(date, ".", date.DayMonthYear)
-  |> result.map_error(UnableToParse(data, var, date, _, "date"))
+  |> result.map_error(UnableToParse(var, date, _, "date"))
 }
 
 pub fn get_range_date(data: ExtractedData, var: String) {
   use date <- result.try(get_string(data, var))
 
   date.parse_partial_date_with_year(date, ".", date.DayMonthYear)
-  |> result.map_error(UnableToParse(data, var, date, _, "date"))
+  |> result.map_error(UnableToParse(var, date, _, "date"))
 }
 
 pub fn get_optional_range_date(data: ExtractedData, var: String) {
@@ -122,7 +98,7 @@ pub fn get_optional_range_date(data: ExtractedData, var: String) {
     Some(date) -> {
       date.parse_partial_date_with_year(date, ".", date.DayMonthYear)
       |> result.map(Some)
-      |> result.map_error(UnableToParse(data, var, date, _, "date"))
+      |> result.map_error(UnableToParse(var, date, _, "date"))
     }
   }
 }

@@ -1,3 +1,4 @@
+import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
 import input_loader/error.{type InputLoaderError, ReadDirectoryError}
@@ -42,6 +43,7 @@ fn rec_read_directory(dir: String) {
 }
 
 fn next_impl(
+  progress: Int,
   loader_name: String,
   all: List(String),
 ) -> Result(Option(#(InputFile, InputLoader)), InputLoaderError) {
@@ -54,8 +56,15 @@ fn next_impl(
       )
       Ok(
         Some(#(
-          InputFile(f, loader_name, "", content),
-          InputLoader(fn() { next_impl(loader_name, rest) }),
+          InputFile(
+            f,
+            loader_name,
+            "",
+            content,
+            progress,
+            Some(list.length(all) + progress + 1),
+          ),
+          InputLoader(fn() { next_impl(progress + 1, loader_name, rest) }),
         )),
       )
     }
@@ -64,5 +73,5 @@ fn next_impl(
 
 pub fn new(name: String, dir: String) {
   use files <- result.try(rec_read_directory(dir))
-  Ok(InputLoader(next: fn() { next_impl(name, files) }))
+  Ok(InputLoader(next: fn() { next_impl(0, name, files) }))
 }

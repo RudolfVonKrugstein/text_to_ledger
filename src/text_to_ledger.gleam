@@ -1,4 +1,6 @@
+import cli/log
 import cli/main
+import colored
 import enricher/enricher
 import extracted_data/extracted_data
 import extractor/csv/csv_column
@@ -6,165 +8,165 @@ import extractor/extractor
 import gleam/dict
 import gleam/erlang/process
 import gleam/int
+import gleam/io
+import gleam/list
 import gleam/string
-import glight
 import gsv
 import input_loader/error
 import input_loader/input_file
 import paperless_api/error as api_error
 import template/template
 
-fn log_enricher_error(log: glight.LoggerContext, err: enricher.EnricherError) {
+fn print_enricher_error(
+  err: enricher.EnricherError,
+  file_vars: List(#(String, String)),
+) {
   case err {
     enricher.RegexMatchError(string:, regex:) ->
-      log
-      |> glight.with("regex", regex)
-      |> glight.with("string", string)
-      |> glight.error("enricher failed to match required regular expression")
+      log.error("enricher failed to match required regular expresssion", [
+        #("regex", regex),
+        #("string", string),
+        ..file_vars
+      ])
     enricher.InputValueNotFound(name:) ->
-      log
-      |> glight.with("value_name", name)
-      |> glight.error("enricher failed to find input value")
+      log.error("enricher failed to find input value", [
+        #("value_name", name),
+        ..file_vars
+      ])
     enricher.TemplateRenderError(template:, error:) ->
-      log
-      |> glight.with("template", template)
-      |> glight.with("error", template.error_string(error))
-      |> glight.error("enricher failed to render template")
+      log.error("enricher failed to render template", [
+        #("template", template),
+        #("error", template.error_string(error)),
+        ..file_vars
+      ])
   }
 }
 
-fn log_extractor_error(log: glight.LoggerContext, err: extractor.ExtractorError) {
+fn print_extractor_error(
+  err: extractor.ExtractorError,
+  file_vars: List(#(String, String)),
+) {
   case err {
     extractor.CsvColumnNotFound(csv_column.ByIndex(i)) ->
-      log
-      |> glight.with("column_index", int.to_string(i))
-      |> glight.error("unable to find column by index in csv")
+      log.error("unable to find coloumn by index in csv", [
+        #("column_index", int.to_string(i)),
+        ..file_vars
+      ])
     extractor.CsvColumnNotFound(csv_column.ByName(n)) ->
-      log
-      |> glight.with("column_name", n)
-      |> glight.error("unable to find column by index in csv")
+      log.error("unable to find coloumn by name in csv", [
+        #("column_name", n),
+        ..file_vars
+      ])
     extractor.CsvError(err) ->
       case err {
         gsv.MissingClosingQuote(starting_line:) ->
-          log
-          |> glight.with("starting_line", int.to_string(starting_line))
-          |> glight.error("missing closing quote in csv")
+          log.error("missing closing quote in csv", [
+            #("starting_line", int.to_string(starting_line)),
+            ..file_vars
+          ])
         gsv.UnescapedQuote(line:) ->
-          log
-          |> glight.with("line", int.to_string(line))
-          |> glight.error("unescaped quote in csv")
+          log.error("unescaped quote in csv", [
+            #("line", int.to_string(line)),
+            ..file_vars
+          ])
       }
-    extractor.CsvFileInvalid -> log |> glight.error("csv file invalid")
-    extractor.EnricherError(err) -> log |> log_enricher_error(err)
+    extractor.CsvFileInvalid -> log.error("csv file invalid", file_vars)
+    extractor.EnricherError(err) -> print_enricher_error(err, file_vars)
   }
 }
 
-fn with_extracted_data_values(
-  log: glight.LoggerContext,
-  values: List(#(String, String)),
-) {
-  case values {
-    [] -> log
-    [#(key, value), ..vs] ->
-      glight.with(log, "value_" <> key, value)
-      |> with_extracted_data_values(vs)
-  }
-}
-
-fn with_extracted_data(
-  log: glight.LoggerContext,
-  data: extracted_data.ExtractedData,
-) {
-  with_extracted_data_values(log, dict.to_list(data.values))
-}
-
-fn log_extracted_data_error(
-  log: glight.LoggerContext,
+fn print_extracted_data_error(
   err: extracted_data.ExtractedDataError,
+  data: extracted_data.ExtractedData,
+  file_vars: List(#(String, String)),
 ) {
   case err {
-    extracted_data.KeyNotFound(data:, key:) ->
-      log
-      |> with_extracted_data(data)
-      |> glight.with("key", key)
-      |> glight.error("unable to find key in extracted data")
-    extracted_data.UnableToParse(data: _, key:, value:, msg:, value_type:) ->
-      log
-      |> glight.with("key", key)
-      |> glight.with("value", value)
-      |> glight.with("type", value_type)
-      |> glight.with("msg", msg)
-      |> glight.error("unable to parse data when extracting")
+    extracted_data.KeyNotFound(key:) -> {
+      let extracted_data_vars =
+        dict.to_list(data.values)
+        |> list.map(fn(val) {
+          let #(key, value) = val
+          #("value_" <> key, value)
+        })
+
+      log.error("unable to find key in extracted data", [
+        #("key", key),
+        ..list.flatten([file_vars, extracted_data_vars])
+      ])
+    }
+    extracted_data.UnableToParse(key:, value:, msg:, value_type:) ->
+      log.error("unable to parse data when extracting", [
+        #("key", key),
+        #("value", value),
+        #("type", value_type),
+        #("msg", msg),
+      ])
   }
 }
 
-fn log_extract_from_file_error(
-  log: glight.LoggerContext,
+fn print_extract_from_file_error(
   file: input_file.InputFile,
   err: main.ExtractFromFileError,
 ) {
-  let log =
-    log
-    |> glight.with("file_name", file.name)
-    |> glight.with("file_title", file.title)
-    |> glight.with("input_loader", file.loader)
+  let file_vars = [
+    #("file_name", file.name),
+    #("file_title", file.title),
+    #("input_loader", file.loader),
+  ]
+
   case err {
-    main.EnricherError(err:) -> log |> log_enricher_error(err)
-    main.ExtractedDataError(err) -> log |> log_extracted_data_error(err)
-    main.ExtractorError(err:) -> log |> log_extractor_error(err)
+    main.EnricherError(err:) -> print_enricher_error(err, file_vars)
+    main.ExtractedDataError(data:, err:) ->
+      print_extracted_data_error(err, data, file_vars)
+    main.ExtractorError(err:) -> print_extractor_error(err, file_vars)
     main.NoExtractorMatch(errors: _) ->
-      log |> glight.error("no extrator matched the file")
+      log.error("no extrator matched the file", [])
     main.ToManyExtractorMatched(num:) ->
-      log
-      |> glight.with("num_matched_extractors", int.to_string(num))
-      |> glight.error("to many extrator matched the file")
+      log.error("to many extrator matched the file", [
+        #("num_matched_extractors", int.to_string(num)),
+      ])
   }
 }
 
-fn log_input_loader_error(
-  log: glight.LoggerContext,
-  err: error.InputLoaderError,
-) {
+fn print_input_loader_error(err: error.InputLoaderError) {
   case err {
-    error.PaperlessApiError(err) ->
-      log
-      |> glight.with("api_error", api_error.string(err))
-      |> glight.error("error with paperless api")
-    error.ReadDirectoryError(path:, error:) ->
-      log
-      |> glight.with("path", path)
-      |> glight.with("error", string.inspect(error))
-      |> glight.error("error reading input directory")
+    error.PaperlessApiError(err) -> {
+      log.error("error with paperless API", [
+        #("api_error", api_error.string(err)),
+      ])
+    }
+    error.ReadDirectoryError(path:, error:) -> {
+      log.error("error reading input directory", [
+        #("path", path),
+        #("api_error", string.inspect(error)),
+      ])
+    }
   }
 }
 
 pub fn main() -> Nil {
-  glight.configure([glight.Console, glight.File("server.log")])
-  glight.set_log_level(glight.Debug)
-  glight.set_is_color(True)
-
-  let log = glight.logger()
   case main.cli() {
-    Ok(_) -> glight.info(log, "done, exiting")
+    Ok(_) -> io.println(colored.green("done, exiting"))
     Error(e) ->
       case e {
-        main.DecodeConfigError(file:, error:) ->
-          log
-          |> glight.with("file", file)
-          |> glight.with("error", string.inspect(error))
-          |> glight.error("unable to decode config file")
-        main.InputLoaderError(err:) -> log |> log_input_loader_error(err)
-        main.ParseParameterError(msg:) ->
-          log
-          |> glight.with("message", msg)
-          |> glight.error("unable to parse parameters")
-        main.ReadConfigError(file:, error:) ->
-          log
-          |> glight.with("config_file", file)
-          |> glight.with("error", string.inspect(error))
-          |> glight.error("unable to read config file")
+        main.DecodeConfigError(file:, error:) -> {
+          log.error("unable to decode config file", [
+            #("file", file),
+            #("error", string.inspect(error)),
+          ])
+        }
+        main.InputLoaderError(err:) -> print_input_loader_error(err)
+        main.ParseParameterError(msg:) -> {
+          log.error("unable to parse parameters", [#("message", msg)])
+        }
+        main.ReadConfigError(file:, error:) -> {
+          log.error("unable to read config file", [
+            #("error", string.inspect(error)),
+            #("config_file", file),
+          ])
+        }
         main.ExtractFromFileError(file:, err:) ->
-          log |> log_extract_from_file_error(file, err)
+          print_extract_from_file_error(file, err)
       }
   }
   // let the logger log all

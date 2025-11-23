@@ -56,7 +56,6 @@ pub fn from_extracted_data(
     date.full_date_from_range(date, sheet.start_date, sheet.end_date)
     |> result.map_error(fn(e) {
       extracted_data.UnableToParse(
-        data:,
         key: "date",
         value: string.inspect(date),
         msg: e,
