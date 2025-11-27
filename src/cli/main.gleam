@@ -1,6 +1,11 @@
 import cli/command
 import cli/config/config
 import cli/config/input_config
+import cli/error.{
+  DecodeConfigError, EnricherError, ExtractFromFileError, ExtractedDataError,
+  InputLoaderError, NoExtractorMatch, ParseParameterError, ReadConfigError,
+  ToManyExtractorMatched, YamlParseError,
+}
 import cli/log
 import data/ledger
 import data/transaction_sheet
@@ -8,23 +13,17 @@ import dot_env
 import enricher/enricher
 import extracted_data/extracted_data
 import extractor/extractor
+import glaml
+import gleam/dynamic/decode
 import gleam/int
 import gleam/json
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/result
-import input_loader/error as input_error
 import input_loader/input_file.{type InputFile}
 import input_loader/input_loader
 import simplifile
-
-pub type Error {
-  ParseParameterError(msg: String)
-  ReadConfigError(file: String, error: simplifile.FileError)
-  DecodeConfigError(file: String, error: json.DecodeError)
-  InputLoaderError(err: input_error.InputLoaderError)
-  ExtractFromFileError(file: InputFile, err: ExtractFromFileError)
-}
+import yaml/yaml
 
 pub fn errors(results: List(Result(a, e))) -> List(e) {
   list.filter_map(results, fn(result) {
@@ -48,17 +47,6 @@ pub fn find_matching_extractor(
     [match] -> Ok(match)
     matches -> Error(ToManyExtractorMatched(list.length(matches)))
   }
-}
-
-pub type ExtractFromFileError {
-  ExtractorError(err: extractor.ExtractorError)
-  NoExtractorMatch(errors: List(extractor.ExtractorError))
-  ToManyExtractorMatched(num: Int)
-  ExtractedDataError(
-    data: extracted_data.ExtractedData,
-    err: extracted_data.ExtractedDataError,
-  )
-  EnricherError(err: enricher.EnricherError)
 }
 
 pub fn extract_from_file(input_file: InputFile, config: config.Config) {
@@ -120,9 +108,33 @@ pub fn cli() {
 
   log.info("parsing config", [])
 
+  // use config <- result.try(
+  //   json.parse(config, config.config_decoder())
+  //   |> result.map_error(DecodeConfigError(command.config, _)),
+  // )
+  use config_dynamic <- result.try(
+    yaml.parse_string(config)
+    |> result.map_error(YamlParseError(command.config, _)),
+  )
+
+  use config_dynamic <- result.try(
+    list.first(config_dynamic)
+    |> result.map_error(fn(_) {
+      YamlParseError(
+        command.config,
+        glaml.ParsingError(
+          "yaml file is contains no document",
+          glaml.YamlErrorLoc(0, 0),
+        ),
+      )
+    }),
+  )
+
   use config <- result.try(
-    json.parse(config, config.config_decoder())
-    |> result.map_error(DecodeConfigError(command.config, _)),
+    decode.run(config_dynamic, config.config_decoder())
+    |> result.map_error(fn(e) {
+      DecodeConfigError(command.config, json.UnableToDecode(e))
+    }),
   )
 
   log.info("creating input loader", [
@@ -161,7 +173,38 @@ pub fn cli() {
       )
       Ok(extracted)
     }
-    command.TestEnrichersParameters(config:, extra_enrichers:) -> todo
+    command.TestEnrichersParameters(config:, extra_enrichers:) -> {
+      todo
+      //   log.info("loading all files", [])
+      //
+      //   let bar = progress.fancy_slim_arrow_bar()
+      //
+      //   let all_docs =
+      //     input_loader.fold_load_all(input_loader, #(bar, []), fn(acc, file) {
+      //       let #(bar, loaded) = acc
+      //
+      //       let bar = case file.total_files {
+      //         None -> progress.tick(bar)
+      //         Some(l) -> progress.with_length(bar, l) |> progress.tick
+      //       }
+      //
+      //       progress.print_bar(bar)
+      //
+      //       [extracted_data.empty(in_file), ..loaded]
+      //     })
+      //
+      //   log.info("running extractor on all files", [])
+      //
+      //   let bar =
+      //     progress.fancy_slim_arrow_bar()
+      //     |> progess.with_length(list.len(all_docs))
+      //   list.try_fold(all_docs, #(bar, []), fn(acc, file) {
+      //     let #(bar, finished) = acc
+      //     let bar = progress.tick(bar)
+      //
+      //     extract_from_file(file, config)
+      //   })
+    }
   }
   // use _ <- result.try(
   //   result.all(
