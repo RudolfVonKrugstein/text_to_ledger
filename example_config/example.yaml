@@ -1,0 +1,75 @@
+input:
+  directory: /home/nathan/bank_statements/
+  name: home bank statements
+  type: directory
+extractors:
+  - sheet:
+      regexes:
+        - Kontonummer (?<an>[0-9]{10})
+        - neuer Kontostand (v\.|vom) +(?<ed>[0-9]{1,2}\.[0-9]{2}\.[0-9]{4}) +(?<ea>[0-9\.]*,[0-9]{2})
+          (?<es>[HS])
+        - alter Kontostand vom (?<sd>[0-9]{1,2}\.[0-9]{2}\.[0-9]{4}) +(?<sa>[0-9\.]*,[0-9]{2})
+          (?<ss>[HS])
+      values:
+        account: "{an}"
+        bank: GLS Bank
+        end_amount: '{es|r(H,)|r(S,-)}{ea|r(.,)|r(\,,.)} EUR'
+        end_date: "{ed}"
+        start_amount: '{ss|r(H,)|r(S,-)}{sa|r(.,)|r(\,,.)} EUR'
+        start_date: "{sd}"
+    transaction_areas:
+      end:
+        regex: ^.*(Übertrag auf Blatt|neuer Kontostand vom)
+        split: before
+      start:
+        regex: (alter Kontostand vom|Übertrag von Blatt).*$
+        split: after
+      subarea:
+        end: \n\n
+        start: '[0-9]{2}\.[0-9]{2}\. +[0-9]{2}\.[0-9]{2}\.'
+    type: text
+enrichers:
+  - name: date, amount and subject
+    regexes:
+      content:
+        - (?<bd>[0-9]{2}\.[0-9]{2}\.) +[0-9]{2}\.[0-9]{2}\. +(?<line1>.+) +(?<a>[0-9\.]*,[0-9]{2})
+          (?<as>[HS])
+        - optional: true
+          regex: "^ +(?<lines>[^ \n].*[^ \n])$"
+    values:
+      amount: '{as|r(H,)|r(S,-)}{a|r(.,)|r(\,,.)} EUR'
+      date: "{bd}"
+      subject: "{line1}{lines|concat()}"
+  - name: source account
+    regexes:
+      account: "^1234567890$"
+    values:
+      source_account: "assets:checking:private"
+  - name: Tante Rübe
+    regexes:
+      source_account: ^assets:checking:private$
+      subject: .*Tante Rübe.*
+    values:
+      payee: Tante Rübe
+      target_account: expenses:food:grocery:tanteruebe
+  - name: Alpenverein
+    regexes:
+      source_account: ^assets:checking:private$
+      subject: .*Alpenverein.*
+    values:
+      payee: Alpenverein
+      target_account: expenses:hobby:hiking
+  - name: Versicherung
+    regexes:
+      source_account: ^assets:checking:private$
+      subject: .*(HALLESCHE|versicherung).*
+    values:
+      payee: Versicherung
+      target_account: expenses:insurance
+  - name: Versicherung
+    regexes:
+      source_account: ^assets:checking:private$
+      subject: .*DB Vertrieb.*
+    values:
+      payee: Deutsche Bahn
+      target_account: expenses:train
