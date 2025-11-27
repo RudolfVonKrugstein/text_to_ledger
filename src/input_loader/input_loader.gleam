@@ -14,6 +14,21 @@ pub fn next(loader: InputLoader) {
   loader.next()
 }
 
+pub fn fold_load_all(
+  loader: InputLoader,
+  init: acc,
+  f: fn(acc, InputFile) -> acc,
+) -> Result(acc, InputLoaderError) {
+  use n <- result.try(next(loader))
+
+  case n {
+    None -> Ok(init)
+    Some(#(file, loader)) -> {
+      fold_load_all(loader, f(init, file), f)
+    }
+  }
+}
+
 pub fn load_all(
   loader: InputLoader,
   f: fn(InputFile) -> res,

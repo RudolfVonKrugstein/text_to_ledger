@@ -57,12 +57,12 @@ fn next_impl(
       Ok(
         Some(#(
           InputFile(
-            f,
-            loader_name,
-            "",
-            content,
-            progress,
-            Some(list.length(all) + progress + 1),
+            name: f,
+            loader: loader_name,
+            title: "",
+            content: content,
+            progress: progress,
+            total_files: Some(list.length(all) + progress + 1),
           ),
           InputLoader(fn() { next_impl(progress + 1, loader_name, rest) }),
         )),
