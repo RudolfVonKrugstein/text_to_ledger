@@ -1,5 +1,6 @@
 //// Run sanity checks on the parsed data.
 
+import bigi
 import data/date.{type Date}
 import data/ledger
 import data/money.{type Money}
@@ -56,7 +57,7 @@ pub fn check_balance(
             acc,
             result.unwrap(
               list.first(trans.lines) |> result.map(fn(l) { l.amount }),
-              money.Money(0, 0, ""),
+              money.Money(bigi.zero(), 0, ""),
             ),
           )
         })

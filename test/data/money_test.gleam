@@ -1,3 +1,4 @@
+import bigi
 import data/money.{Money}
 import gleam/list
 import gleam/option.{None, Some}
@@ -5,9 +6,14 @@ import gleeunit/should
 
 pub fn parse_money_test() {
   let cases = [
-    #("1,120.02 USD", Some("."), Some(","), Money(112_002, 2, "USD")),
-    #("12.02 EUR", Some("."), None, Money(1202, 2, "EUR")),
-    #("12 ITL", None, None, Money(12, 0, "ITL")),
+    #(
+      "1,120.02 USD",
+      Some("."),
+      Some(","),
+      Money(bigi.from_int(112_002), 2, "USD"),
+    ),
+    #("12.02 EUR", Some("."), None, Money(bigi.from_int(1202), 2, "EUR")),
+    #("12 ITL", None, None, Money(bigi.from_int(12), 0, "ITL")),
   ]
 
   list.each(cases, fn(c) {

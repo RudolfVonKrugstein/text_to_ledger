@@ -1,3 +1,4 @@
+import bigi
 import gleam/dynamic/decode
 import gleam/int
 import gleam/option.{type Option, None, Some}
@@ -8,8 +9,8 @@ import gleam/string
 pub type Money {
   Money(
     /// The amount in cents (or whatever thr small denomination of the currency is)
-    amount: Int,
-    /// The position of the decimal, counted from thowest position
+    amount: bigi.BigInt,
+    /// The position of the decimal, counted from the lowest position
     decimal_pos: Int,
     /// The Currency as a short string in uppercase letters (like EUR or USD)
     currency: String,
@@ -17,7 +18,12 @@ pub type Money {
 }
 
 pub fn money_decoder() -> decode.Decoder(Money) {
-  use amount <- decode.field("amount", decode.int)
+  use amount <- decode.field("amount", decode.string)
+  use amount <- decode.then(case bigi.from_string(amount) {
+    Ok(a) -> decode.success(a)
+    Error(_) ->
+      decode.failure(bigi.zero(), "unable to parse integer: " <> amount)
+  })
   use decimal_pos <- decode.field("decimal_pos", decode.int)
   use currency <- decode.field("currency", decode.string)
   decode.success(Money(amount:, decimal_pos:, currency:))
@@ -29,13 +35,21 @@ pub fn equalize_decimal(a: Money, b: Money) {
     a_pos, b_pos if a_pos == b_pos -> #(a, b)
     a_pos, b_pos if a_pos < b_pos ->
       equalize_decimal(
-        Money(..a, amount: a.amount * 10, decimal_pos: a_pos + 1),
+        Money(
+          ..a,
+          amount: bigi.multiply(a.amount, bigi.from_int(10)),
+          decimal_pos: a_pos + 1,
+        ),
         b,
       )
     _, b_pos ->
       equalize_decimal(
         a,
-        Money(..b, amount: b.amount * 10, decimal_pos: b_pos + 1),
+        Money(
+          ..b,
+          amount: bigi.multiply(b.amount, bigi.from_int(10)),
+          decimal_pos: b_pos + 1,
+        ),
       )
   }
 }
@@ -43,12 +57,12 @@ pub fn equalize_decimal(a: Money, b: Money) {
 /// Add 2 amounts.
 pub fn add(a: Money, b: Money) {
   let #(a, b) = equalize_decimal(a, b)
-  Money(..a, amount: a.amount + b.amount)
+  Money(..a, amount: bigi.add(a.amount, b.amount))
 }
 
 /// Switch the sign of the amount.
 pub fn negate(money: Money) {
-  Money(..money, amount: -money.amount)
+  Money(..money, amount: bigi.negate(money.amount))
 }
 
 /// Compare 2 amounts
@@ -59,7 +73,7 @@ pub fn equal(a: Money, b: Money) {
 
 /// Print an amount in ledger compatible string.
 pub fn to_string(money: Money) {
-  let amount_str = int.to_string(money.amount)
+  let amount_str = bigi.to_string(money.amount)
   let amount_str = case money.decimal_pos {
     0 -> amount_str
     pos_from_end -> {
@@ -73,7 +87,7 @@ pub fn to_string(money: Money) {
   amount_str <> " " <> money.currency
 }
 
-/// Parse a string, represnting money.
+/// Parse a string, representing money.
 ///
 /// The expected format is: XXX...[<decimal>YY] <CUR>
 ///
@@ -122,7 +136,7 @@ pub fn parse_money(
   }
 
   use amount <- result.try(
-    int.parse(amount)
+    bigi.from_string(amount)
     |> result.map_error(fn(_) { "invalid currency amount: " <> text }),
   )
 
@@ -132,7 +146,7 @@ pub fn parse_money(
 pub fn decode_money() {
   use amount <- decode.then(decode.string)
   case parse_money(amount, Some("."), None) {
-    Error(e) -> decode.failure(Money(0, 0, ""), e)
+    Error(e) -> decode.failure(Money(bigi.zero(), 0, ""), e)
     Ok(money) -> decode.success(money)
   }
 }
