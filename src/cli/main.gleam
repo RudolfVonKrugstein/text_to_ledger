@@ -16,13 +16,18 @@ import extractor/extractor
 import glaml
 import gleam/dynamic/decode
 import gleam/int
+import gleam/io
 import gleam/json
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/result
+import gleam/string
 import input_loader/input_file.{type InputFile}
 import input_loader/input_loader
+import shiny
 import simplifile
+import ui/progress
+import utils/misc
 import yaml/yaml
 
 pub fn errors(results: List(Result(a, e))) -> List(e) {
@@ -151,18 +156,35 @@ pub fn cli() {
 
   case command {
     command.RunParameters(_) -> {
+      io.println("starting")
+      io.println("...")
+
       use extracted <- result.try(
         input_loader.try_load_all(input_loader, fn(in_file) {
-          log.info("extracting data from file", [
-            #("file_id", in_file.name),
-            #("progress", int.to_string(in_file.progress)),
-            #("total_files", case in_file.total_files {
+          misc.move_cursor_up(1)
+          shiny.clear_line()
+          misc.move_cursor_up(1)
+          shiny.clear_line()
+          io.println(
+            int.to_string(in_file.progress + 1)
+            <> "/"
+            <> case in_file.total_files {
               None -> "?"
-              Some(t) -> int.to_string(t)
-            }),
-          ])
+              Some(tf) -> int.to_string(tf)
+            }
+            <> ": "
+            <> in_file.name,
+          )
+          case in_file.total_files {
+            None -> io.println("...")
+            Some(tf) -> {
+              io.println(progress.progress_bar(in_file.progress + 1, tf, 30))
+            }
+          }
 
-          extract_from_file(in_file, config)
+          use #(_, ledgers) <- result.try(extract_from_file(in_file, config))
+
+          Ok(ledgers)
         })
         |> result.map_error(fn(te) {
           case te {
