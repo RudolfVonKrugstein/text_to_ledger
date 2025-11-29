@@ -29,6 +29,29 @@ pub fn fold_load_all(
   }
 }
 
+pub type TryError(err) {
+  LoaderError(InputLoaderError)
+  FuncError(input: InputFile, err: err)
+}
+
+pub fn try_fold_load_all(
+  loader: InputLoader,
+  init: acc,
+  f: fn(acc, InputFile) -> Result(acc, err),
+) -> Result(acc, TryError(err)) {
+  use n <- result.try(next(loader) |> result.map_error(LoaderError))
+
+  case n {
+    None -> Ok(init)
+    Some(#(file, loader)) -> {
+      use acc <- result.try(
+        f(init, file) |> result.map_error(FuncError(file, _)),
+      )
+      try_fold_load_all(loader, acc, f)
+    }
+  }
+}
+
 pub fn load_all(
   loader: InputLoader,
   f: fn(InputFile) -> res,
@@ -41,11 +64,6 @@ pub fn load_all(
       Ok([f(text), ..rest])
     }
   }
-}
-
-pub type TryError(err) {
-  LoaderError(InputLoaderError)
-  FuncError(input: InputFile, err: err)
 }
 
 pub fn try_load_all(
