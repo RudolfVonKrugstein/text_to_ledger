@@ -3,7 +3,8 @@ input:
   name: home bank statements
   type: directory
 extractors:
-  - sheet:
+  - type: text
+    sheet:
       regexes:
         - Kontonummer (?<an>[0-9]{10})
         - neuer Kontostand (v\.|vom) +(?<ed>[0-9]{1,2}\.[0-9]{2}\.[0-9]{4}) +(?<ea>[0-9\.]*,[0-9]{2})
@@ -27,7 +28,19 @@ extractors:
       subarea:
         end: \n\n
         start: '[0-9]{2}\.[0-9]{2}\. +[0-9]{2}\.[0-9]{2}\.'
-    type: text
+  - type: csv
+    with_headers: true
+    sheet:
+      regexes:
+        - csv/paypal
+      values:
+        source_account: assets:checking:paypal
+    values:
+      date: Datum
+      currency: Währung
+      amount: Brutto
+      subject: Beschreibung
+
 enrichers:
   - name: date, amount and subject
     regexes:
@@ -45,31 +58,108 @@ enrichers:
       account: "^1234567890$"
     values:
       source_account: "assets:checking:private"
-  - name: Tante Rübe
+  - name: Miete
     regexes:
       source_account: ^assets:checking:private$
-      subject: .*Tante Rübe.*
+      subject: Miete
     values:
-      payee: Tante Rübe
-      target_account: expenses:food:grocery:tanteruebe
+      payee: Vermieter
+      target_account: expenses:rent
   - name: Alpenverein
     regexes:
       source_account: ^assets:checking:private$
-      subject: .*Alpenverein.*
+      subject: Alpenverein
     values:
       payee: Alpenverein
       target_account: expenses:hobby:hiking
   - name: Versicherung
     regexes:
       source_account: ^assets:checking:private$
-      subject: .*(HALLESCHE|versicherung).*
+      subject: .*(HALLESCHE|versicherung|BARMER).*
     values:
       payee: Versicherung
       target_account: expenses:insurance
   - name: Versicherung
     regexes:
       source_account: ^assets:checking:private$
-      subject: .*DB Vertrieb.*
+      subject: DB Vertrieb
     values:
       payee: Deutsche Bahn
       target_account: expenses:train
+  - name: Grocery
+    regexes:
+      source_account: ^assets:checking:private$
+      subject: (EDEKA|REWE|TEGUT|SCHECK-IN|RUTZ|Tante Rübe)
+    values:
+      payee: Supermarket
+      target_account: expenses:grocery
+  - name: Eating out
+    regexes:
+      source_account: ^assets:checking:private$
+      subject: (Pizzeria|Peave|MCDONALDS|BAY JOK)
+    values:
+      payee: some restaurant
+      target_account: expenses:eatingout
+  - name: Streaming
+    regexes:
+      source_account: ^assets:checking:private$
+      subject: (?<c>AMAZON|Netflix)
+    values:
+      payee: "{c}"
+      target_account: expenses:streaming
+  - name: Giropay
+    regexes:
+      source_account: ^assets:checking:private$
+      subject: Giropay
+    values:
+      payee: online shop
+      target_account: expenses:shopping:online
+  - name: Microsoft
+    regexes:
+      source_account: ^assets:checking:private$
+      subject: Microsoft
+    values:
+      payee: Microsoft
+      target_account: expenses:licenses
+  - name: Donations
+    regexes:
+      source_account: ^assets:checking:private$
+      subject: Greenpeace
+    values:
+      payee: NGO
+      target_account: expenses:donations
+  - name: Fitness
+    regexes:
+      source_account: ^assets:checking:private$
+      subject: Kieser
+    values:
+      payee: some fitness studio
+      target_account: expenses:fitness
+  - name: Kontoausgleich
+    regexes:
+      source_account: ^assets:checking:private$
+      subject: Kontoausgleich
+    values:
+      payee: my other account
+      target_account: assets:checking:work
+  - name: Ein und Auszahlungen
+    regexes:
+      source_account: ^assets:checking:private$
+      subject: (Entnahme|Einzahlung)
+    values:
+      payee: my wallet
+      target_account: expenses:cash
+  - name: Anlage
+    regexes:
+      source_account: ^assets:checking:private$
+      subject: (A|a)nlage
+    values:
+      payee: my wallet
+      target_account: assets:investments
+  - name: Phone
+    regexes:
+      source_account: ^assets:checking:private$
+      subject: congstar
+    values:
+      payee: congstar
+      target_account: expenses:phone
