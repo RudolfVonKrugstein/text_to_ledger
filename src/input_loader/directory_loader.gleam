@@ -1,6 +1,8 @@
+import gleam/bit_array
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
+import gleam/string
 import input_loader/error.{type InputLoaderError, ReadDirectoryError}
 import input_loader/input_file.{type InputFile, InputFile}
 import input_loader/input_loader.{type InputLoader, InputLoader}
@@ -21,13 +23,15 @@ fn rec_list_files(
         |> result.map_error(ReadDirectoryError(path, _)),
       )
       case is_dir {
-        False -> Ok([path, ..rest])
+        False -> Ok([f, ..rest])
         True -> {
           use sublisting <- result.try(
             simplifile.read_directory(path)
             |> result.map_error(ReadDirectoryError(path, _)),
           )
-          rec_list_files(path, sublisting)
+          let sublisting = list.map(sublisting, fn(d) { f <> "/" <> d })
+          use subdir <- result.try(rec_list_files(dir, sublisting))
+          Ok(list.append(subdir, rest))
         }
       }
     }
@@ -45,26 +49,33 @@ fn rec_read_directory(dir: String) {
 fn next_impl(
   progress: Int,
   loader_name: String,
+  dir: String,
   all: List(String),
 ) -> Result(Option(#(InputFile, InputLoader)), InputLoaderError) {
+  let dir = case string.ends_with(dir, "/") {
+    False -> dir
+    True -> string.drop_end(dir, 1)
+  }
   case all {
     [] -> Ok(None)
     [f, ..rest] -> {
       use content <- result.try(
-        simplifile.read(f)
+        simplifile.read(dir <> "/" <> f)
         |> result.map_error(ReadDirectoryError(f, _)),
       )
+      let assert Ok(first_char) = string.first(content)
+      let assert Ok(#(_, content)) = string.split_once(content, first_char)
       Ok(
         Some(#(
           InputFile(
-            name: f,
+            name: dir <> "/" <> f,
             loader: loader_name,
-            title: "",
+            title: f,
             content: content,
             progress: progress,
-            total_files: Some(list.length(all) + progress + 1),
+            total_files: Some(list.length(all) + progress),
           ),
-          InputLoader(fn() { next_impl(progress + 1, loader_name, rest) }),
+          InputLoader(fn() { next_impl(progress + 1, loader_name, dir, rest) }),
         )),
       )
     }
@@ -73,5 +84,5 @@ fn next_impl(
 
 pub fn new(name: String, dir: String) {
   use files <- result.try(rec_read_directory(dir))
-  Ok(InputLoader(next: fn() { next_impl(0, name, files) }))
+  Ok(InputLoader(next: fn() { next_impl(0, name, dir, files) }))
 }
