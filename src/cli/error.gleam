@@ -175,7 +175,10 @@ fn print_extract_from_file_error(
     ExtractedDataError(data:, err:) ->
       print_extracted_data_error(err, data, file_vars)
     ExtractorError(err:) -> print_extractor_error(err, file_vars)
-    NoExtractorMatch(errors: _) -> log.error("no extrator matched the file", [])
+    NoExtractorMatch(errors:) ->
+      log.error("no extrator matched the file", [
+        #("errors", string.inspect(errors)),
+      ])
     ToManyExtractorMatched(num:) ->
       log.error("to many extrator matched the file", [
         #("num_matched_extractors", int.to_string(num)),
