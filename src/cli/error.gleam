@@ -15,6 +15,7 @@ import input_loader/input_file
 import paperless_api/error as api_error
 import simplifile
 import template/template
+import yaml/yaml
 
 pub type ExtractFromFileError {
   ExtractorError(err: extractor.ExtractorError)
@@ -30,20 +31,13 @@ pub type ExtractFromFileError {
 pub type Error {
   ParseParameterError(msg: String)
   ReadConfigError(file: String, error: simplifile.FileError)
-  DecodeConfigError(file: String, error: json.DecodeError)
-  YamlParseError(file: String, error: glaml.YamlError)
+  YamlParseError(file: String, error: yaml.YamlDecodeError)
   InputLoaderError(err: input_error.InputLoaderError)
   ExtractFromFileError(file: input_file.InputFile, err: ExtractFromFileError)
 }
 
 pub fn log(e: Error) {
   case e {
-    DecodeConfigError(file:, error:) -> {
-      log.error("unable to decode config file", [
-        #("file", file),
-        #("error", string.inspect(error)),
-      ])
-    }
     InputLoaderError(err:) -> print_input_loader_error(err)
     ParseParameterError(msg:) -> {
       log.error("unable to parse parameters", [#("message", msg)])
@@ -58,17 +52,23 @@ pub fn log(e: Error) {
       print_extract_from_file_error(file, err)
     YamlParseError(file:, error:) ->
       case error {
-        glaml.ParsingError(msg:, loc:) ->
+        yaml.YamlError(glaml.ParsingError(msg:, loc:)) ->
           log.error("error parsing yaml", [
             #("config_file", file),
             #("message", msg),
             #("loc_line", int.to_string(loc.line)),
             #("loc_column", int.to_string(loc.line)),
           ])
-        glaml.UnexpectedParsingError ->
+        yaml.YamlError(glaml.UnexpectedParsingError) ->
           log.error("unexpected error when parsing yaml", [
             #("config_file", file),
           ])
+        yaml.UnableToDecode(error) -> {
+          log.error("unable to decode config file", [
+            #("file", file),
+            #("error", string.inspect(error)),
+          ])
+        }
       }
   }
 }

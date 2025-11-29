@@ -14,7 +14,7 @@ pub type Config {
   )
 }
 
-pub fn config_decoder() -> decode.Decoder(Config) {
+pub fn decoder() -> decode.Decoder(Config) {
   use extractors <- decode.field(
     "extractors",
     decode.list(extractor_config.decoder()),
