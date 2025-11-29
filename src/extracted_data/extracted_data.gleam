@@ -22,6 +22,14 @@ pub fn empty(input: input_file.InputFile) {
   ExtractedData(input, dict.new())
 }
 
+pub fn insert(data: ExtractedData, key: String, value: String) {
+  ExtractedData(..data, values: dict.insert(data.values, key, value))
+}
+
+pub fn update_input(data: ExtractedData, input: input_file.InputFile) {
+  ExtractedData(..data, input:)
+}
+
 pub fn to_string(data: ExtractedData) {
   "input file:\n"
   <> input_file.to_string(data.input)

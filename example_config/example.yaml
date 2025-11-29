@@ -34,6 +34,7 @@ extractors:
       regexes:
         - csv/paypal
       values:
+        bank: "PayPal"
         source_account: assets:checking:paypal
     values:
       date: Datum
@@ -42,6 +43,13 @@ extractors:
       subject: Beschreibung
 
 enrichers:
+  - name: correct pypal amount
+    regexes:
+      bank: "PayPal"
+      amount: "^(?<amount>.*)$"
+      currency: "^(?<cur>.*)$"
+    values:
+      amount: "{amount|r(\\,,.)} {cur}"
   - name: date, amount and subject
     regexes:
       content:
