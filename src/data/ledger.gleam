@@ -3,6 +3,7 @@ import data/money.{type Money}
 import data/transaction_sheet
 import extracted_data/extracted_data
 import gleam/list
+import gleam/option
 import gleam/result
 import gleam/string
 import input_loader/input_file
@@ -46,14 +47,22 @@ pub fn to_string(entry: LedgerEntry) {
   <> string.join(entry_lines, "\n  ")
 }
 
-pub fn from_extracted_data(
-  data: extracted_data.ExtractedData,
-  sheet: transaction_sheet.TransactionSheet,
-) {
+pub fn from_extracted_data(data: extracted_data.ExtractedData) {
+  use start_date <- result.try(extracted_data.get_optional_range_date(
+    data,
+    "start_date",
+  ))
+  let start_date = start_date |> option.map(date.first_possible_date)
+  use end_date <- result.try(extracted_data.get_optional_range_date(
+    data,
+    "end_date",
+  ))
+  let end_date = end_date |> option.map(date.first_possible_date)
+
   use date <- result.try(extracted_data.get_trans_date(data, "date"))
 
   use date <- result.try(
-    date.full_date_from_range(date, sheet.start_date, sheet.end_date)
+    date.full_date_from_range(date, start_date, end_date)
     |> result.map_error(fn(e) {
       extracted_data.UnableToParse(
         key: "date",

@@ -63,7 +63,7 @@ pub fn extract_from_file(input_file: InputFile, config: config.Config) {
 
   use transactions <- result.try(
     list.try_map(transactions, fn(t) {
-      ledger.from_extracted_data(t, sheet)
+      ledger.from_extracted_data(t)
       |> result.map_error(ExtractedDataError(t, err: _))
     }),
   )
