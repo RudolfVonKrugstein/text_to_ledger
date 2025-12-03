@@ -60,8 +60,9 @@ pub fn load_all(
   case n {
     None -> Ok([])
     Some(#(text, loader)) -> {
+      let res = f(text)
       use rest <- result.try(load_all(loader, f))
-      Ok([f(text), ..rest])
+      Ok([res, ..rest])
     }
   }
 }
