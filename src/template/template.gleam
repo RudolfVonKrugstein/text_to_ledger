@@ -1,3 +1,68 @@
+//// A template to create text (a `String`) using values extracted using
+//// named capture groups in regexes.
+////
+//// Rendering a template allows inserting variables into a string.
+//// Variable placeholders are defined using `{` and `}`:
+////
+//// ```gleam
+//// import template/parser/parser
+//// import template
+//// import io
+////
+//// fn main() {
+////   let template = parser.run("var: {var}")
+////   let vars = dict.from_list([#("var", ["value"])])
+////   let assert Ok(rendered) = template.render(template, vars)
+////   
+////   io.println(rendered)
+////   // var: value
+//// }
+//// ```
+////
+//// The variables can be modified using modificators. This are
+//// added behind a variable name using the pipe operator (`|`)
+//// and have a name, and optional parameters in paranthese.
+//// For examle the `replace` (or short `r`) modfier, replacing
+//// a string with another:
+////
+//// ```gleam
+//// import template/parser/parser
+//// import template
+//// import io
+////
+//// fn main() {
+////   let template = parser.run("var: {var | r(v,V)}")
+////   let vars = dict.from_list([#("var", ["value"])])
+////   let assert Ok(rendered) = template.render(template, vars)
+////   
+////   io.println(rendered)
+////   // var: Value
+//// }
+//// ```
+////
+//// Note, that the variables `vars` values are always lists of strings.
+//// That is because they come from named capture groups, which can have
+//// several matches when the regex is applied.
+//// If you just use a variable, like in the first example above, the
+//// value from the first match is used. But there are modifcators, that
+//// use all values from the matches. For example the `cancat`, or short
+//// `c` modifier:
+////
+//// ```gleam
+//// import template/parser/parser
+//// import template
+//// import io
+////
+//// fn main() {
+////   let template = parser.run("var: {var | c(-)}")
+////   let vars = dict.from_list([#("var", ["1","2","3"])])
+////   let assert Ok(rendered) = template.render(template, vars)
+////   
+////   io.println(rendered)
+////   // var: 1-2-3
+//// }
+//// ```
+
 import gleam/dict
 import gleam/int
 import gleam/list
@@ -5,11 +70,9 @@ import gleam/option.{None, Some}
 import gleam/result
 import gleam/string
 
-/// A template is rendered using variables extracted using regexes into a string.
-///
-/// Normaly one would get a template by parsing a template string.
-///
-/// TODO: Explain how template strings work.
+/// Type for a template.
+/// It saves the original string the template has been created form as
+/// well as the parsed list of templated parts.
 pub type Template {
   Template(input: String, parts: List(TemplatePart))
 }
@@ -33,6 +96,10 @@ pub type TemplateMod {
   )
 }
 
+/// Type for variables inserted when rendering templates.
+/// Since the Vars come from named capture groups in a regex
+/// and a regex can have several matxhes, the values are
+/// represented as a list, where every entry is from a match.
 pub type Vars =
   dict.Dict(String, List(String))
 
