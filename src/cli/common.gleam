@@ -2,6 +2,7 @@ import cli/config/config
 import cli/error.{
   EnricherError, ExtractedDataError, NoExtractorMatch, ToManyExtractorMatched,
 }
+import data/extracted_data
 import data/ledger
 import data/transaction_sheet
 import enricher/enricher

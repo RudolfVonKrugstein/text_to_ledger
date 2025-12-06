@@ -1,4 +1,4 @@
-import extracted_data/extracted_data.{type ExtractedData, ExtractedData}
+import data/extracted_data.{type ExtractedData, ExtractedData}
 import extractor/extract_regex.{type ExtractRegex}
 import gleam/dict
 import gleam/dynamic/decode

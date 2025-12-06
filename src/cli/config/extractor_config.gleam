@@ -1,4 +1,4 @@
-import extracted_data/extracted_data
+import data/extracted_data
 import extractor/csv/csv_extractor
 import extractor/csv/csv_extractor_config
 import extractor/extractor

@@ -1,5 +1,5 @@
+import data/extracted_data
 import enricher/enricher
-import extracted_data/extracted_data
 import extractor/extractor
 import extractor/text/text_extractor_config.{type TextExtractorConfig}
 import gleam/list

@@ -1,6 +1,6 @@
 import cli/log
 import enricher/enricher
-import extracted_data/extracted_data
+import data/extracted_data
 import extractor/csv/csv_column
 import extractor/extractor
 import glaml

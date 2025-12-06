@@ -1,6 +1,6 @@
 import data/date
+import data/extracted_data
 import data/money.{type Money}
-import extracted_data/extracted_data
 import gleam/dynamic/decode
 import gleam/option.{type Option, None}
 import gleam/result
