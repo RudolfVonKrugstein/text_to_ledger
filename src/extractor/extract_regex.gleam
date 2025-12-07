@@ -5,7 +5,7 @@ pub type ExtractRegex {
   ExtractRegex(regex: regex.RegexWithOpts, on: String)
 }
 
-pub fn extract_regex_decoder() -> decode.Decoder(ExtractRegex) {
+pub fn decoder() -> decode.Decoder(ExtractRegex) {
   decode.one_of(
     {
       use regex <- decode.then(regex.regex_opt_decoder())

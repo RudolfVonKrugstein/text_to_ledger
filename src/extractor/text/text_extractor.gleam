@@ -1,3 +1,9 @@
+//// A Text extractor uses regex to extract the data.
+////
+//// - It splits the transactions in the document using regexes
+////   marking beginning and end of the area.
+//// - It extracts global/sheet values using an enricher.
+
 import data/extracted_data
 import enricher/enricher
 import extractor/extractor

@@ -4,7 +4,9 @@ import regex/area_regex
 
 pub type TextExtractorConfig {
   TextExtractorConfig(
+    /// Global/sheet data
     sheet: enricher.Enricher,
+    /// The areas where each contains a transaction
     transaction_areas: area_regex.AreaRegex,
   )
 }
