@@ -1,3 +1,7 @@
+//// An enricher adds or updates variables to `ExtractedData`
+//// by applying regexes to existing variable or the file content
+//// and rendering templates into new variables.
+
 import data/extracted_data.{type ExtractedData, ExtractedData}
 import extractor/extract_regex.{type ExtractRegex}
 import gleam/dict
@@ -10,14 +14,19 @@ import regexp_ext
 import template/parser/parser
 import template/template
 
+/// The enricher to add information/variables to `ExtractedData`
 pub type Enricher {
   Enricher(
+    /// Name of the enricher, just for tracing/debuging
     name: Option(String),
+    /// The regexes with named capture groups
     regexes: List(ExtractRegex),
+    /// The variables/values to render in case of sucessfull match of the regexes
     values: dict.Dict(String, template.Template),
   )
 }
 
+/// Decode an enricher from `Dynamic`
 pub fn decoder() -> decode.Decoder(Enricher) {
   use name <- decode.optional_field(
     "name",
@@ -26,7 +35,7 @@ pub fn decoder() -> decode.Decoder(Enricher) {
   )
   use regexes <- decode.field(
     "regexes",
-    decode.one_of(decode.list(extract_regex.extract_regex_decoder()), [
+    decode.one_of(decode.list(extract_regex.decoder()), [
       {
         use dict <- decode.then(decode.dict(
           decode.string,
@@ -63,8 +72,11 @@ pub fn decoder() -> decode.Decoder(Enricher) {
 
 /// The errors that can happen through extraction
 pub type EnricherError {
+  /// Regex did not match
   RegexMatchError(string: String, regex: String)
+  /// Error during rendering of template
   TemplateRenderError(template: String, error: template.RenderError)
+  /// Input variable was not found
   InputValueNotFound(name: String)
 }
 
@@ -78,12 +90,6 @@ pub fn error_string(e: EnricherError) -> String {
       <> "error: "
       <> template.error_string(error)
     InputValueNotFound(name:) -> "Input value " <> name <> " was not found"
-    // ParseDateError(value:, msg:) ->
-    //   "Unable to exract Money from " <> value <> ": " <> msg
-    // ParseMoneyError(value:, msg:) ->
-    //   "Unable to exract Date from " <> value <> ": " <> msg
-    // CompleteTransDateError(msg:) ->
-    //   "Unable to complete date of transaction: " <> msg
   }
 }
 
@@ -151,6 +157,8 @@ fn dict_map_values_error(
   })
 }
 
+/// Apply an enricher to `ExtractedData`.
+/// Gives back an error if it can not be applied.
 pub fn apply(
   data: ExtractedData,
   enricher: Enricher,
@@ -170,14 +178,27 @@ pub fn apply(
   Ok(ExtractedData(..data, values: dict.merge(data.values, new_values)))
 }
 
+/// Apply an enricher to `ExtractedData`, but dont give
+/// back an error if the extractor cannot be applied
+/// becaue a regex does not match or an input variable is not found.
+/// Instead give back `None` in these cases.
 pub fn try_apply(
   data: ExtractedData,
-  extractor: Enricher,
+  enricher: Enricher,
 ) -> Result(Option(ExtractedData), EnricherError) {
-  case apply(data, extractor) {
+  case apply(data, enricher) {
     Error(RegexMatchError(_, _)) -> Ok(None)
     Error(InputValueNotFound(_)) -> Ok(None)
     Error(e) -> Error(e)
     Ok(e) -> Ok(Some(e))
   }
+}
+
+/// Try apply (see `try_apply`) but give back the
+/// original data instead of None if it cannot be applied.
+pub fn try_maybe_apply(
+  data: ExtractedData,
+  enricher: Enricher,
+) -> Result(ExtractedData, EnricherError) {
+  try_apply(data, enricher) |> result.map(option.unwrap(_, data))
 }
