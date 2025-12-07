@@ -6,6 +6,28 @@ import gleam/list
 import gleam/option.{None, Some}
 import gleeunit/should
 
+pub fn is_fiscal_valid_date_test() {
+  let cases = [
+    #(Date(2025, 2, 1), True),
+    #(Date(2025, 2, 31), True),
+    #(Date(2025, 2, 32), False),
+    #(Date(2022, 1, -1), False),
+    #(Date(2022, -1, 1), False),
+    #(Date(2022, 13, 1), False),
+  ]
+
+  use #(date, expected) <- list.map(cases)
+
+  let res = date.is_fiscal_valid_date(date)
+  case expected {
+    True -> should.equal(res, Ok(date))
+    False -> {
+      should.be_error(res)
+      Nil
+    }
+  }
+}
+
 pub fn parse_date_test() {
   let cases = [
     #("1.2.2025", ".", DayMonthYear, Date(2025, 2, 1)),
@@ -71,6 +93,25 @@ pub fn parse_partial_date_with_year_test() {
 
     should.equal(
       date.parse_partial_date_with_year(text, sep, order),
+      Ok(expected),
+    )
+  })
+}
+
+pub fn parse_partial_date_with_day_test() {
+  let cases = [
+    #("1.2.2025", ".", DayMonthYear, WithDayFullDate(Date(2025, 2, 1))),
+    #("2/1", "/", YearMonthDay, WithDayAndMonth(2, 1)),
+    #("31/2", "/", DayMonthYear, WithDayAndMonth(2, 31)),
+    #("10", ".", DayMonthYear, OnlyDay(10)),
+  ]
+
+  cases
+  |> list.each(fn(c) {
+    let #(text, sep, order, expected) = c
+
+    should.equal(
+      date.parse_partial_date_with_day(text, sep, order),
       Ok(expected),
     )
   })

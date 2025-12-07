@@ -1,4 +1,10 @@
-//// The day is definitly present
+//// Our own date types.
+////
+//// Next to a standard days, there are types for dates with
+//// missing information.
+//// For Transactions, the date may not specify the year
+//// and for the start end end data and transactions sheets, the
+//// day might be missing.
 
 import gleam/dynamic/decode
 import gleam/int
@@ -21,14 +27,14 @@ pub fn to_string(date: Date) {
   <> string.pad_start(int.to_string(date.day), 2, "0")
 }
 
-/// A date, where not all information is available (like "5.12").
+/// A date, where the year and even the month might be missing (like "5.12").
 pub type PartialDateWithDay {
   OnlyDay(day: Int)
   WithDayAndMonth(month: Int, day: Int)
   WithDayFullDate(date: Date)
 }
 
-/// A date, where not all information is available (like "5.12").
+/// A date, where the day and even the month might be missing (like "2.2025").
 pub type PartialDateWithYear {
   OnlyYear(year: Int)
   WithYearAndMonth(year: Int, month: Int)
@@ -52,8 +58,8 @@ fn canonical_date_order(one: a, two: a, three: a, order: ParseDateOrder) {
   }
 }
 
-// Brings the seperated parts of a date in a common order,
-// which is #(month, day)
+/// Brings the seperated parts of a date in a common order,
+/// which is #(month, day)
 fn canonical_date_order_month_day(one: a, two: a, order: ParseDateOrder) {
   case order {
     DayMonthYear -> #(two, one)
@@ -62,8 +68,8 @@ fn canonical_date_order_month_day(one: a, two: a, order: ParseDateOrder) {
   }
 }
 
-// Brings the seperated parts of a date in a common order,
-// which is #(year, month)
+/// Brings the seperated parts of a date in a common order,
+/// which is #(year, month)
 fn canonical_date_order_year_month(one: a, two: a, order: ParseDateOrder) {
   case order {
     DayMonthYear -> #(two, one)
@@ -72,10 +78,10 @@ fn canonical_date_order_year_month(one: a, two: a, order: ParseDateOrder) {
   }
 }
 
-// Checks if the date is valid as a financial date.
-//
-// It does not have to be a real date, but day and month must be in
-// a valid range (1<=day<=31, 1<=month<=12).
+/// Checks if the date is valid as a financial date.
+///
+/// It does not have to be a real date, but day and month must be in
+/// a valid range (1<=day<=31, 1<=month<=12).
 pub fn is_fiscal_valid_date(date: Date) -> Result(Date, String) {
   case date {
     Date(_, _, day) if day < 1 || day > 31 ->
@@ -86,6 +92,7 @@ pub fn is_fiscal_valid_date(date: Date) -> Result(Date, String) {
   }
 }
 
+/// Parse and check a day (just an int between 1 and 31).
 fn parse_day(text: String) {
   use day <- result.try(
     int.parse(text)
@@ -100,6 +107,7 @@ fn parse_day(text: String) {
   }
 }
 
+/// Parse and check a month (just an int between 1 and 12).
 fn parse_month(text: String) {
   use month <- result.try(
     int.parse(text)
@@ -114,6 +122,7 @@ fn parse_month(text: String) {
   }
 }
 
+/// Parse and check a year (just an int).
 fn parse_year(text: String) {
   use year <- result.try(
     int.parse(text)
@@ -127,6 +136,7 @@ fn parse_year(text: String) {
 /// Parse a full date.
 ///
 /// # Arguments:
+///
 /// - `text` is the input that is parsed.
 /// - `seperator` is the symbol, between the elements of the date.
 /// - `order` is the order, in which the date is expected.
@@ -161,6 +171,7 @@ pub fn decode_full_date() {
 /// filled, but assume the year is always present (see the `PartialDateWithYear` type).
 ///
 /// # Arguments:
+///
 /// - `text`: The text to parse.
 /// - `seperator` is the symbol, between the elements of the date.
 /// - `order` is the order, in which the date is expected.
@@ -191,6 +202,7 @@ pub fn parse_partial_date_with_year(
 /// filled, but assume the day is alwasy present (see the `PartialDateWithDay` type).
 ///
 /// # Arguments:
+///
 /// - `text`: The text to parse.
 /// - `seperator` is the symbol, between the elements of the date.
 /// - `order` is the order, in which the date is expected.
