@@ -1,3 +1,6 @@
+//// A ledger entry for a ledger file.
+//// This is the main output format.
+
 import data/date
 import data/extracted_data
 import data/money.{type Money}
@@ -7,29 +10,44 @@ import gleam/result
 import gleam/string
 import input_loader/input_file
 
+/// An entry in a ledger
 pub type LedgerEntry {
   LedgerEntry(
+    /// The input file the ledger comes from
     input: input_file.InputFile,
+    /// The transaction date
     date: date.Date,
+    /// The payee in the ledger description
     payee: String,
+    /// Comment in front of the ledger
     comment: String,
+    /// The lines, or blance changes, of the entry.
     lines: List(LedgerEntryLine),
   )
 }
 
+/// A Line in a ledger entry.
 pub type LedgerEntryLine {
-  LedgerEntryLine(account: String, amount: Money, comment: String)
+  LedgerEntryLine(
+    /// The affected account
+    account: String,
+    /// The amount of money (or other unit) that is transfered
+    amount: Money,
+    /// Comment on the line
+    comment: String,
+  )
 }
 
 fn line_to_string(line: LedgerEntryLine) {
   let comment = case line.comment {
     "" -> ""
-    comment -> "; " <> string.replace(comment, "\n", "\n; ") <> "\n"
+    comment -> "  ; " <> string.replace(comment, "\n", "\n  ; ")
   }
 
-  comment <> line.account <> "\t" <> money.to_string(line.amount)
+  comment <> "\n  " <> line.account <> "\t" <> money.to_string(line.amount)
 }
 
+/// Convert to the `LedgerEntry` to a string, that can be put into a ledger file
 pub fn to_string(entry: LedgerEntry) {
   let comment = case entry.comment {
     "" -> ""
@@ -42,10 +60,11 @@ pub fn to_string(entry: LedgerEntry) {
   <> date.to_string(entry.date)
   <> " "
   <> entry.payee
-  <> "\n  "
-  <> string.join(entry_lines, "\n  ")
+  <> "\n"
+  <> string.join(entry_lines, "\n")
 }
 
+/// Create the ledger entry from extracted data
 pub fn from_extracted_data(data: extracted_data.ExtractedData) {
   use start_date <- result.try(extracted_data.get_optional_range_date(
     data,
