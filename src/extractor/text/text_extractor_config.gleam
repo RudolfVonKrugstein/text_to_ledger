@@ -2,6 +2,7 @@ import enricher/enricher
 import gleam/dynamic/decode
 import regex/area_regex
 
+/// Configuration for a text extractor.
 pub type TextExtractorConfig {
   TextExtractorConfig(
     /// Global/sheet data

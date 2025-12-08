@@ -1,5 +1,12 @@
-import enricher/enricher
+//// A CSV extractor extracts data from CSV file.
+////
+//// - Each line is a transaction, and it maps columns to variables
+////   in the extracted data.
+//// - Global/sheet data can be extracted using regexes from the document
+////   title.
+
 import data/extracted_data
+import enricher/enricher
 import extractor/csv/csv_column
 import extractor/csv/csv_extractor_config
 import extractor/csv/csv_value
@@ -43,16 +50,7 @@ fn run(
   #(extracted_data.ExtractedData, List(extracted_data.ExtractedData)),
   extractor.ExtractorError,
 ) {
-  use body <- result.try(case config.with_headers {
-    False -> Ok(input.content)
-    True -> {
-      use #(_, body) <- result.try(
-        string.split_once(input.content, "\n")
-        |> result.map_error(fn(_) { extractor.CsvFileInvalid }),
-      )
-      Ok(body)
-    }
-  })
+  let body = string.trim(input.content)
 
   use by_index <- result.try(
     gsv.to_lists(body, config.seperator)

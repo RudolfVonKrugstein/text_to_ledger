@@ -5,11 +5,17 @@ import gleam/dict
 import gleam/dynamic/decode
 import gleam/list
 
+/// Configuration for a CSV extractor
 pub type CsvExtractorConfig {
   CsvExtractorConfig(
+    /// Whether the CSV has headers
     with_headers: Bool,
+    /// How the CSV seperates values (a usual choice is ",")
     seperator: String,
+    /// Data set on the sheet/global level
     sheet: enricher.Enricher,
+    /// List of values to extract from the CSV file
+    /// into variables in the extracted data.
     values: List(csv_value.CsvValue),
   )
 }

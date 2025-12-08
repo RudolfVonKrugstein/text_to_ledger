@@ -12,7 +12,7 @@ import regex/regex
 import regex/split_regex
 import template/parser/parser
 
-pub fn run_text_tractor_test() {
+pub fn run_text_extractor_test() {
   // setup
   let example_text =
     "

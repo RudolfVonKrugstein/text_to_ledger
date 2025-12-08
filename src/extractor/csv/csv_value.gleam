@@ -1,8 +1,14 @@
 import extractor/csv/csv_column.{type CsvColumn}
 import gleam/dynamic/decode
 
+/// A value (or variable) taken from CSV.
 pub type CsvValue {
-  CsvValue(name: String, column: CsvColumn)
+  CsvValue(
+    /// Name of the variable
+    name: String,
+    /// The column it is taken from
+    column: CsvColumn,
+  )
 }
 
 pub fn decoder() -> decode.Decoder(CsvValue) {
