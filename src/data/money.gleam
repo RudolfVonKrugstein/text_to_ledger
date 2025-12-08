@@ -1,6 +1,5 @@
 import bigi
 import gleam/dynamic/decode
-import gleam/int
 import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/string

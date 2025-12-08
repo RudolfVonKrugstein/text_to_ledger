@@ -11,10 +11,8 @@ import data/money
 import gleam/dict
 import gleam/dynamic/decode
 import gleam/json
-import gleam/list
 import gleam/option.{None, Some}
 import gleam/result
-import gleam/string
 import input_loader/input_file
 
 /// The type for extracted data.
