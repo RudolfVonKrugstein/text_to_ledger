@@ -5,7 +5,7 @@ import data/date
 import data/extracted_data
 import data/money.{type Money}
 import gleam/list
-import gleam/option
+import gleam/option.{type Option}
 import gleam/result
 import gleam/string
 import input_loader/input_file
@@ -15,6 +15,8 @@ pub type LedgerEntry {
   LedgerEntry(
     /// The input file the ledger comes from
     input: input_file.InputFile,
+    /// The file to write this do (None for the default file)
+    file: Option(String),
     /// The transaction date
     date: date.Date,
     /// The payee in the ledger description
@@ -36,6 +38,27 @@ pub type LedgerEntryLine {
     /// Comment on the line
     comment: String,
   )
+}
+
+/// Create a new LedgerEntry with a transaction from one accoun to another
+pub fn new(
+  input input: input_file.InputFile,
+  file file: Option(String),
+  date date: date.Date,
+  payee payee: String,
+  comment comment: String,
+  accounts accounts: #(String, String),
+  ammount amount: Money,
+) {
+  let #(source_account, target_account) = accounts
+  LedgerEntry(input:, file:, date:, payee:, comment:, lines: [
+    LedgerEntryLine(account: source_account, amount:, comment: ""),
+    LedgerEntryLine(
+      account: target_account,
+      amount: money.negate(amount),
+      comment: "",
+    ),
+  ])
 }
 
 fn line_to_string(line: LedgerEntryLine) {
@@ -66,11 +89,14 @@ pub fn to_string(entry: LedgerEntry) {
 
 /// Create the ledger entry from extracted data
 pub fn from_extracted_data(data: extracted_data.ExtractedData) {
+  let file = extracted_data.get_optional_string(data, "file")
+
   use start_date <- result.try(extracted_data.get_optional_range_date(
     data,
     "start_date",
   ))
   let start_date = start_date |> option.map(date.first_possible_date)
+
   use end_date <- result.try(extracted_data.get_optional_range_date(
     data,
     "end_date",
@@ -78,7 +104,6 @@ pub fn from_extracted_data(data: extracted_data.ExtractedData) {
   let end_date = end_date |> option.map(date.first_possible_date)
 
   use date <- result.try(extracted_data.get_trans_date(data, "date"))
-
   use date <- result.try(
     date.full_date_from_range(date, start_date, end_date)
     |> result.map_error(fn(e) {
@@ -106,7 +131,7 @@ pub fn from_extracted_data(data: extracted_data.ExtractedData) {
   ))
 
   Ok(
-    LedgerEntry(input: data.input, date:, payee:, comment: "", lines: [
+    LedgerEntry(input: data.input, file:, date:, payee:, comment: "", lines: [
       LedgerEntryLine(account: source_account, amount:, comment: ""),
       LedgerEntryLine(
         account: target_account,

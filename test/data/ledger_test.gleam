@@ -2,7 +2,7 @@ import bigi
 import data/date
 import data/ledger
 import data/money
-import gleam/option.{Some}
+import gleam/option.{None, Some}
 import gleeunit/should
 import input_loader/input_file
 
@@ -17,6 +17,7 @@ pub fn to_string_test() {
         progress: 0,
         total_files: Some(1),
       ),
+      file: None,
       date: date.Date(2025, 2, 1),
       payee: "payee",
       comment: "comment",
