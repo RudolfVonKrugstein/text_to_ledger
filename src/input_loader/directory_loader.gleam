@@ -7,44 +7,6 @@ import input_loader/input_file.{type InputFile, InputFile}
 import input_loader/input_loader.{type InputLoader, InputLoader}
 import simplifile
 
-fn rec_list_files(
-  dir: String,
-  listing: List(String),
-) -> Result(List(String), InputLoaderError) {
-  case listing {
-    [] -> Ok([])
-    [f, ..rest] -> {
-      use rest <- result.try(rec_list_files(dir, rest))
-
-      let path = dir <> "/" <> f
-      use is_dir <- result.try(
-        simplifile.is_directory(path)
-        |> result.map_error(ReadDirectoryError(path, _)),
-      )
-      case is_dir {
-        False -> Ok([f, ..rest])
-        True -> {
-          use sublisting <- result.try(
-            simplifile.read_directory(path)
-            |> result.map_error(ReadDirectoryError(path, _)),
-          )
-          let sublisting = list.map(sublisting, fn(d) { f <> "/" <> d })
-          use subdir <- result.try(rec_list_files(dir, sublisting))
-          Ok(list.append(subdir, rest))
-        }
-      }
-    }
-  }
-}
-
-fn rec_read_directory(dir: String) {
-  use listing <- result.try(
-    simplifile.read_directory(dir)
-    |> result.map_error(ReadDirectoryError(dir, _)),
-  )
-  rec_list_files(dir, listing)
-}
-
 fn next_impl(
   progress: Int,
   loader_name: String,
@@ -82,6 +44,9 @@ fn next_impl(
 }
 
 pub fn new(name: String, dir: String) {
-  use files <- result.try(rec_read_directory(dir))
+  use files <- result.try(
+    simplifile.get_files(dir)
+    |> result.map_error(fn(e) { ReadDirectoryError(path: dir, error: e) }),
+  )
   Ok(InputLoader(next: fn() { next_impl(0, name, dir, files) }))
 }
