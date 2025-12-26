@@ -210,6 +210,50 @@ pub fn decode_single_enricher_test() {
 }
 
 pub fn decode_single_enricher_as_list_test() {
-  todo
-  // implement this test for decode_list AI!
+  // Test decoding a single enricher using decode_list
+  let enricher_data =
+    [
+      #(dynamic.string("name"), dynamic.string("test_enricher")),
+      #(
+        dynamic.string("regexes"),
+        dynamic.properties([
+          #(dynamic.string("in_var"), dynamic.string("value(?<val1>[0-9]*)$")),
+        ]),
+      ),
+      #(
+        dynamic.string("values"),
+        dynamic.properties([
+          #(dynamic.string("out_var"), dynamic.string("{val1}")),
+        ]),
+      ),
+    ]
+    |> dynamic.properties
+
+  let result = decode.run(enricher_data, enricher.decode_list())
+
+  should.be_ok(result)
+  let assert Ok(enrichers) = result
+
+  // Verify we got a list with one enricher
+  should.equal(list.length(enrichers), 1)
+  
+  let assert [enricher] = enrichers
+  
+  // Verify the enricher was decoded correctly
+  should.equal(enricher.name, Some("test_enricher"))
+  should.equal(list.length(enricher.regexes), 1)
+  should.equal(dict.size(enricher.values), 1)
+
+  // Test that the enricher works correctly
+  let data =
+    extracted_data.ExtractedData(
+      input: test_input,
+      values: dict.from_list([#("in_var", "value123")]),
+    )
+
+  let apply_result = enricher.apply(data, enricher)
+  should.be_ok(apply_result)
+
+  let assert Ok(result_data) = apply_result
+  should.equal(dict.get(result_data.values, "out_var"), Ok("123"))
 }
