@@ -1,12 +1,11 @@
 import cli/log
-import enricher/enricher
 import data/extracted_data
+import enricher/enricher
 import extractor/csv/csv_column
 import extractor/extractor
 import glaml
 import gleam/dict
 import gleam/int
-import gleam/json
 import gleam/list
 import gleam/string
 import gsv
@@ -67,6 +66,12 @@ pub fn log(e: Error) {
           log.error("unable to decode config file", [
             #("file", file),
             #("error", string.inspect(error)),
+          ])
+        }
+        yaml.ImportLoop(files) -> {
+          log.error("import loop when loading yaml config file", [
+            #("config_file", file),
+            #("loop", string.join(files, ", ")),
           ])
         }
       }

@@ -48,5 +48,5 @@ pub fn run(input_loader: input_loader.InputLoader, config: config.Config) {
       }
     }),
   )
-  Ok(extracted)
+  Ok(Nil)
 }

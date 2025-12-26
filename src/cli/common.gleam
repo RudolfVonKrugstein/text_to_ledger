@@ -21,9 +21,12 @@ fn errors(results: List(Result(a, e))) -> List(e) {
   })
 }
 
-fn find_matching_extractor(
+pub fn find_matching_extractor(
   input_file: InputFile,
   extractors: List(extractor.Extractor),
+) -> Result(
+  #(extracted_data.ExtractedData, List(extracted_data.ExtractedData)),
+  error.ExtractFromFileError,
 ) {
   let matches =
     extractors
