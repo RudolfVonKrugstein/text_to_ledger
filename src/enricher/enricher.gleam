@@ -26,59 +26,40 @@ pub type Enricher {
   )
 }
 
-/// Decode an enricher with children
+/// Decode an enricher, that may have children.
 ///
-/// Encode an enricher, which has chrildren.
-/// The resulting list of enrichers is the outer enricher combined with the
-/// child enrichers (the regexes are merged).
-fn decode_with_children() -> decode.Decoder(List(Enricher)) {
-  use children <- decode.field("children", decode_list())
-
+/// If it does not have children, than a list with just the enricher is returned.
+/// Otherwise the outer enricherer is merged with the children and returned as a list.
+pub fn with_children_decoder() -> decode.Decoder(List(Enricher)) {
   use name <- decode.optional_field(
     "name",
     None,
     decode.optional(decode.string),
   )
-
-  use regexes <- decode.field("regexes", decode_regex_list())
-
-  use values <- decode.optional_field(
+  use regexes <- decode.field("regexes", regex_list_decoder())
+  use values <- decode.field(
     "values",
-    dict.new(),
     decode.dict(decode.string, parser.decode_template()),
   )
 
-  let parent = Enricher(name:, regexes:, values:)
-  let children_with_parent_regexes =
-    list.map(children, fn(child) {
-      Enricher(
-        ..child,
-        regexes: list.append(regexes, child.regexes),
-        values: dict.merge(values, child.values),
+  use children <- decode.optional_field(
+    "children",
+    [],
+    decode.list(with_children_decoder()),
+  )
+  case children {
+    [] -> decode.success([Enricher(name, regexes, values)])
+    children ->
+      decode.success(
+        list.map(list.flatten(children), fn(child) {
+          Enricher(
+            ..child,
+            regexes: list.append(regexes, child.regexes),
+            values: dict.merge(values, child.values),
+          )
+        }),
       )
-    })
-
-  decode.success([parent, ..children_with_parent_regexes])
-}
-
-/// Decode list of enrichers.
-///
-/// On successfull decoding, returns a list of enrichers.
-/// But the original `Dynamic` does have to be a list:
-///
-/// * If it is a single enricher, its returned as a list with one enricher.
-/// * If it is a list of enrichers, they are returned.
-/// * If it is an enricher with `children`, the list of childrens
-///   is comibined with the regexes of the partent and the list is retruned.
-/// * It can even be a list of lists, in which case the list is flattened.
-pub fn decode_list() -> decode.Decoder(List(Enricher)) {
-  decode.one_of(decode_with_children(), [
-    // Handle single enricher (return as list)
-    decoder() |> decode.map(fn(enricher) { [enricher] }),
-    // Handle enricher with children
-    decode.list(decode_list())
-      |> decode.map(fn(enrichers) { list.flatten(enrichers) }),
-  ])
+  }
 }
 
 /// Decode a single enricher.
@@ -90,7 +71,7 @@ pub fn decoder() -> decode.Decoder(Enricher) {
     None,
     decode.optional(decode.string),
   )
-  use regexes <- decode.field("regexes", decode_regex_list())
+  use regexes <- decode.field("regexes", regex_list_decoder())
   use values <- decode.field(
     "values",
     decode.dict(decode.string, parser.decode_template()),
@@ -99,7 +80,7 @@ pub fn decoder() -> decode.Decoder(Enricher) {
 }
 
 /// Decode a single regex or a list into a list
-fn decode_regex_list() -> decode.Decoder(List(ExtractRegex)) {
+fn regex_list_decoder() -> decode.Decoder(List(ExtractRegex)) {
   decode.one_of(decode.list(extract_regex.decoder()), [
     {
       use dict <- decode.then(decode.dict(

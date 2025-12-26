@@ -209,7 +209,7 @@ pub fn decode_single_enricher_test() {
   should.equal(dict.get(result_data.values, "out_var"), Ok("123"))
 }
 
-pub fn decode_single_enricher_as_list_test() {
+pub fn decode_with_children_no_children_test() {
   // Test decoding a single enricher using decode_list
   let enricher_data =
     [
@@ -229,16 +229,17 @@ pub fn decode_single_enricher_as_list_test() {
     ]
     |> dynamic.properties
 
-  let result = decode.run(enricher_data, enricher.decode_list())
+  let dec = enricher.with_children_decoder()
+  let result = decode.run(enricher_data, dec)
 
   should.be_ok(result)
   let assert Ok(enrichers) = result
 
   // Verify we got a list with one enricher
   should.equal(list.length(enrichers), 1)
-  
+
   let assert [enricher] = enrichers
-  
+
   // Verify the enricher was decoded correctly
   should.equal(enricher.name, Some("test_enricher"))
   should.equal(list.length(enricher.regexes), 1)
@@ -256,4 +257,93 @@ pub fn decode_single_enricher_as_list_test() {
 
   let assert Ok(result_data) = apply_result
   should.equal(dict.get(result_data.values, "out_var"), Ok("123"))
+}
+
+pub fn decode_with_children_test() {
+  // Test decoding an enricher with child enrichers
+  let enricher_data =
+    [
+      #(dynamic.string("name"), dynamic.string("parent_enricher")),
+      #(
+        dynamic.string("regexes"),
+        dynamic.properties([
+          #(dynamic.string("in_var"), dynamic.string("value(?<val1>[0-9]*)$")),
+        ]),
+      ),
+      #(
+        dynamic.string("values"),
+        dynamic.properties([
+          #(dynamic.string("out_var"), dynamic.string("{val1}")),
+        ]),
+      ),
+      #(
+        dynamic.string("children"),
+        dynamic.list([
+          dynamic.properties([
+            #(dynamic.string("name"), dynamic.string("child1")),
+            #(
+              dynamic.string("regexes"),
+              dynamic.properties([
+                #(
+                  dynamic.string("out_var"),
+                  dynamic.string("(?<doubled>[0-9]+)"),
+                ),
+              ]),
+            ),
+            #(
+              dynamic.string("values"),
+              dynamic.properties([
+                #(
+                  dynamic.string("doubled_var"),
+                  dynamic.string("{doubled}{doubled}"),
+                ),
+              ]),
+            ),
+          ]),
+          dynamic.properties([
+            #(dynamic.string("name"), dynamic.string("child2")),
+            #(
+              dynamic.string("regexes"),
+              dynamic.properties([
+                #(
+                  dynamic.string("out_var"),
+                  dynamic.string("(?<tripled>[0-9]+)"),
+                ),
+              ]),
+            ),
+            #(
+              dynamic.string("values"),
+              dynamic.properties([
+                #(
+                  dynamic.string("tripled_var"),
+                  dynamic.string("{tripled}{tripled}{tripled}"),
+                ),
+              ]),
+            ),
+          ]),
+        ]),
+      ),
+    ]
+    |> dynamic.properties
+
+  let dec = enricher.with_children_decoder()
+  let result = decode.run(enricher_data, dec)
+
+  should.be_ok(result)
+  let assert Ok(enrichers) = result
+
+  // Verify we got a list with 2 enrichers
+  should.equal(list.length(enrichers), 2)
+
+  let assert [child1, child2] = enrichers
+
+  // Verify child1 enricher
+  should.equal(child1.name, Some("child1"))
+  should.equal(list.length(child1.regexes), 2)
+  should.equal(dict.size(child1.values), 2)
+
+  // Verify child2 enricher
+  should.equal(child2.name, Some("child2"))
+  should.equal(list.length(child2.regexes), 2)
+  should.equal(dict.size(child2.values), 2)
 }
