@@ -208,3 +208,8 @@ pub fn decode_single_enricher_test() {
   let assert Ok(result_data) = apply_result
   should.equal(dict.get(result_data.values, "out_var"), Ok("123"))
 }
+
+pub fn decode_single_enricher_as_list_test() {
+  todo
+  // implement this test for decode_list AI!
+}
