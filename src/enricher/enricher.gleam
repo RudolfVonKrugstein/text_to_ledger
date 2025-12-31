@@ -91,7 +91,7 @@ pub fn decoder() -> decode.Decoder(Enricher) {
 
 /// Decode a single regex or a list into a list
 fn regex_list_decoder() -> decode.Decoder(List(ExtractRegex)) {
-  decode.one_of(decode.list(extract_regex.decoder()), [
+  decode.one_of(decode.list(extract_regex.decoder("content")), [
     {
       use dict <- decode.then(decode.dict(
         decode.string,
