@@ -11,7 +11,8 @@ import data/money
 import gleam/dict
 import gleam/dynamic/decode
 import gleam/json
-import gleam/option.{None, Some}
+import gleam/list
+import gleam/option.{type Option, None, Some}
 import gleam/result
 import input_loader/input_file
 
@@ -20,6 +21,10 @@ pub type ExtractedData {
   ExtractedData(
     /// The input document, this data has been created from.
     input: input_file.InputFile,
+    /// The matched extractor
+    matched_extractor: Option(String),
+    /// The applied enrichers
+    applied_enrichers: List(String),
     /// The values extracted (so far).
     /// This is a dict from the variable name to the variable value
     /// which is always a string at this point.
@@ -38,7 +43,25 @@ pub type ExtractedDataError {
 /// Empty (no varibale/values) extracted data.
 /// This is the starting point for the extraction process.
 pub fn empty(input: input_file.InputFile) {
-  ExtractedData(input, dict.new())
+  ExtractedData(input, None, [], dict.new())
+}
+
+/// Set the extractor of the data
+pub fn with_extractor(data: ExtractedData, name: Option(String)) {
+  ExtractedData(..data, matched_extractor: name)
+}
+
+/// Add an enricher to the extracted data
+pub fn with_enricher(data: ExtractedData, name: String) {
+  ExtractedData(..data, applied_enrichers: [name, ..data.applied_enrichers])
+}
+
+/// Add an enricher to the extracted data, if not None
+pub fn with_option_enricher(data: ExtractedData, name: Option(String)) {
+  case name {
+    None -> data
+    Some(name) -> data |> with_enricher(name)
+  }
 }
 
 /// Insert a value.
@@ -55,10 +78,16 @@ pub fn update_input(data: ExtractedData, input: input_file.InputFile) {
 
 /// Convert to a json object, i.E. to serialize to disc.
 pub fn to_json(extracted_data: ExtractedData) -> json.Json {
-  let ExtractedData(input:, values:) = extracted_data
+  let ExtractedData(input:, values:, matched_extractor:, applied_enrichers:) =
+    extracted_data
   json.object([
     #("input", input_file.to_json(input)),
     #("values", json.dict(values, fn(string) { string }, json.string)),
+    #("matched_extractor", case matched_extractor {
+      None -> json.null()
+      Some(name) -> json.string(name)
+    }),
+    #("applied_enrichers", json.array(applied_enrichers, json.string)),
   ])
 }
 
@@ -69,7 +98,14 @@ pub fn decoder() -> decode.Decoder(ExtractedData) {
     "values",
     decode.dict(decode.string, decode.string),
   )
-  decode.success(ExtractedData(input:, values:))
+  use matched_extractor <- decode.then(decode.optional(decode.string))
+  use applied_enrichers <- decode.then(decode.list(decode.string))
+  decode.success(ExtractedData(
+    input:,
+    values:,
+    matched_extractor:,
+    applied_enrichers:,
+  ))
 }
 
 /// Return the string in a variable, or None if the variable does not exist.

@@ -6,7 +6,7 @@ import extractor/text/text_extractor
 import extractor/text/text_extractor_config
 import gleam/dict
 import gleam/dynamic/decode
-import gleam/option
+import gleam/option.{None}
 import input_loader/input_file
 
 pub fn decoder() -> decode.Decoder(extractor.Extractor) {
@@ -22,13 +22,10 @@ pub fn decoder() -> decode.Decoder(extractor.Extractor) {
     }
     _ ->
       decode.failure(
-        extractor.Extractor(fn(_) {
+        extractor.Extractor(None, fn(_) {
           Ok(
             #(
-              extracted_data.ExtractedData(
-                input_file.InputFile("", "", "", "", 0, option.None),
-                dict.new(),
-              ),
+              extracted_data.empty(input_file.InputFile("", "", "", "", 0, None)),
               [],
             ),
           )

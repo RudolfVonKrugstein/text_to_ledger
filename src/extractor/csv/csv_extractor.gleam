@@ -71,7 +71,8 @@ fn run(
 
   use sheet <- result.try(
     enricher.apply(
-      extracted_data.empty(input_file.InputFile(..input, content: input.title)),
+      extracted_data.empty(input_file.InputFile(..input, content: input.title))
+        |> extracted_data.with_extractor(config.name),
       config.sheet,
     )
     |> result.map_error(extractor.EnricherError),
@@ -92,5 +93,5 @@ fn run(
 pub fn new(
   config: csv_extractor_config.CsvExtractorConfig,
 ) -> extractor.Extractor {
-  extractor.Extractor(run(_, config))
+  extractor.Extractor(config.name, run(_, config))
 }

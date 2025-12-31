@@ -22,7 +22,10 @@ fn run(
 ) {
   // sheet data
   use sheet_data <- result.try(
-    enricher.apply(extracted_data.empty(input), config.sheet)
+    enricher.apply(
+      extracted_data.empty(input) |> extracted_data.with_extractor(config.name),
+      config.sheet,
+    )
     |> result.map_error(extractor.EnricherError),
   )
 
@@ -37,5 +40,5 @@ fn run(
 }
 
 pub fn new(config: TextExtractorConfig) {
-  extractor.Extractor(run(_, config))
+  extractor.Extractor(config.name, run(_, config))
 }

@@ -6,7 +6,7 @@ import extractor/csv/csv_extractor_config
 import extractor/csv/csv_value
 import extractor/extract_regex
 import gleam/dict
-import gleam/option.{None}
+import gleam/option.{None, Some}
 import gleeunit/should
 import input_loader/input_file
 import regex/regex
@@ -34,6 +34,7 @@ trans2,val2
   let assert Ok(value_template) = parser.run("{value}")
   let config =
     csv_extractor_config.CsvExtractorConfig(
+      name: Some("test extractor"),
       sheet: enricher.Enricher(
         name: None,
         regexes: [extract_regex.ExtractRegex(value_re, on: "content")],
@@ -56,6 +57,8 @@ trans2,val2
     extracted_data.ExtractedData(
       input: input_file.InputFile(..input_file, content: sheet.input.content),
       values: dict.from_list([#("value", "123")]),
+      matched_extractor: Some("test extractor"),
+      applied_enrichers: [],
     ),
     sheet,
   )
@@ -64,10 +67,14 @@ trans2,val2
       extracted_data.ExtractedData(
         input: input_file.InputFile(..input_file, content: sheet.input.content),
         values: dict.from_list([#("name", "trans1"), #("value", "val1")]),
+        matched_extractor: Some("test extractor"),
+        applied_enrichers: [],
       ),
       extracted_data.ExtractedData(
         input: input_file.InputFile(..input_file, content: sheet.input.content),
         values: dict.from_list([#("name", "trans2"), #("value", "val2")]),
+        matched_extractor: Some("test extractor"),
+        applied_enrichers: [],
       ),
     ],
     trans,

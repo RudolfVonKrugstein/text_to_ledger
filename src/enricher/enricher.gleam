@@ -225,7 +225,10 @@ pub fn apply(
     }),
   )
 
-  Ok(ExtractedData(..data, values: dict.merge(data.values, new_values)))
+  Ok(
+    ExtractedData(..data, values: dict.merge(data.values, new_values))
+    |> extracted_data.with_option_enricher(enricher.name),
+  )
 }
 
 /// Apply an enricher to `ExtractedData`, but dont give

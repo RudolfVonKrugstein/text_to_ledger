@@ -23,10 +23,8 @@ const test_input = input_file.InputFile(
 pub fn successfull_apply_test() {
   // setup
   let data =
-    extracted_data.ExtractedData(
-      input: test_input,
-      values: dict.from_list([#("in_var", "value123")]),
-    )
+    extracted_data.empty(test_input)
+    |> extracted_data.insert("in_var", "value123")
 
   let assert Ok(re1) = regex.compile_with_default_opts("value(?<val1>[0-9]*)$")
   let assert Ok(out_var_template) = parser.run("{val1}")
@@ -47,6 +45,8 @@ pub fn successfull_apply_test() {
     extracted_data.ExtractedData(
       input: test_input,
       values: dict.from_list([#("in_var", "value123"), #("out_var", "123")]),
+      matched_extractor: None,
+      applied_enrichers: ["test"],
     )
   should.equal(Ok(expected_data), apply_res)
   should.equal(Ok(Some(expected_data)), try_apply_res)
@@ -56,10 +56,8 @@ pub fn successfull_apply_test() {
 pub fn no_match_apply_test() {
   // setup
   let data =
-    extracted_data.ExtractedData(
-      input: test_input,
-      values: dict.from_list([#("in_var", "value123")]),
-    )
+    extracted_data.empty(test_input)
+    |> extracted_data.insert("in_var", "value123")
 
   let assert Ok(re1) = regex.compile_with_default_opts("nomatch")
   let assert Ok(out_var_template) = parser.run("{val1}")
@@ -84,10 +82,8 @@ pub fn no_match_apply_test() {
 pub fn var_missing_apply_test() {
   // setup
   let data =
-    extracted_data.ExtractedData(
-      input: test_input,
-      values: dict.from_list([#("in_var", "value123")]),
-    )
+    extracted_data.empty(test_input)
+    |> extracted_data.insert("in_var", "value123")
 
   let assert Ok(re1) = regex.compile_with_default_opts("value(?<val1>[0-9]*)$")
   let assert Ok(out_var_template) = parser.run("{val1}")
@@ -112,10 +108,8 @@ pub fn var_missing_apply_test() {
 pub fn template_error_apply_test() {
   // setup
   let data =
-    extracted_data.ExtractedData(
-      input: test_input,
-      values: dict.from_list([#("in_var", "value123")]),
-    )
+    extracted_data.empty(test_input)
+    |> extracted_data.insert("in_var", "value123")
 
   let assert Ok(re1) = regex.compile_with_default_opts("value(?<val1>[0-9]*)$")
   let assert Ok(out_var_template) = parser.run("{val1|c(1,2,3)}")
@@ -140,10 +134,8 @@ pub fn template_error_apply_test() {
 pub fn missing_capture_group_apply_test() {
   // setup
   let data =
-    extracted_data.ExtractedData(
-      input: test_input,
-      values: dict.from_list([#("in_var", "value123")]),
-    )
+    extracted_data.empty(test_input)
+    |> extracted_data.insert("in_var", "value123")
 
   let assert Ok(re1) = regex.compile_with_default_opts("value(?<val1>[0-9]*)$")
   let assert Ok(out_var_template) = parser.run("{missing_val}")
@@ -197,10 +189,8 @@ pub fn decode_single_enricher_test() {
 
   // Test that the enricher works correctly
   let data =
-    extracted_data.ExtractedData(
-      input: test_input,
-      values: dict.from_list([#("in_var", "value123")]),
-    )
+    extracted_data.empty(test_input)
+    |> extracted_data.insert("in_var", "value123")
 
   let apply_result = enricher.apply(data, enricher)
   should.be_ok(apply_result)
@@ -250,6 +240,8 @@ pub fn decode_with_children_no_children_test() {
     extracted_data.ExtractedData(
       input: test_input,
       values: dict.from_list([#("in_var", "value123")]),
+      matched_extractor: None,
+      applied_enrichers: [],
     )
 
   let apply_result = enricher.apply(data, enricher)
@@ -338,12 +330,12 @@ pub fn decode_with_children_test() {
   let assert [child1, child2] = enrichers
 
   // Verify child1 enricher
-  should.equal(child1.name, Some("child1"))
+  should.equal(child1.name, Some("parent_enricher/child1"))
   should.equal(list.length(child1.regexes), 2)
   should.equal(dict.size(child1.values), 2)
 
   // Verify child2 enricher
-  should.equal(child2.name, Some("child2"))
+  should.equal(child2.name, Some("parent_enricher/child2"))
   should.equal(list.length(child2.regexes), 2)
   should.equal(dict.size(child2.values), 2)
 }

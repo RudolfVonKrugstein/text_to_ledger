@@ -13,12 +13,14 @@
 import data/extracted_data
 import enricher/enricher
 import extractor/csv/csv_column
+import gleam/option.{type Option}
 import gsv
 import input_loader/input_file
 
 /// The Extractor, its just the `run` function doing the extraction.
 pub type Extractor {
   Extractor(
+    name: Option(String),
     run: fn(input_file.InputFile) ->
       Result(
         #(extracted_data.ExtractedData, List(extracted_data.ExtractedData)),

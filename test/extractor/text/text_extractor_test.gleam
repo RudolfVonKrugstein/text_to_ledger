@@ -43,6 +43,7 @@ pub fn run_text_extractor_test() {
   let assert Ok(value_template) = parser.run("{value}")
   let config =
     text_extractor_config.TextExtractorConfig(
+      name: Some("test extractor"),
       sheet: enricher.Enricher(
         name: None,
         regexes: [extract_regex.ExtractRegex(value_re, on: "content")],
@@ -64,6 +65,8 @@ pub fn run_text_extractor_test() {
     extracted_data.ExtractedData(
       input: input_file,
       values: dict.from_list([#("value", "123")]),
+      matched_extractor: Some("test extractor"),
+      applied_enrichers: [],
     ),
     sheet,
   )
@@ -75,6 +78,8 @@ pub fn run_text_extractor_test() {
           content: "\n    Transaction 1\n    ",
         ),
         values: dict.from_list([#("value", "123")]),
+        matched_extractor: Some("test extractor"),
+        applied_enrichers: [],
       ),
       extracted_data.ExtractedData(
         input: input_file.InputFile(
@@ -82,6 +87,8 @@ pub fn run_text_extractor_test() {
           content: "\n    Transaction 2\n    ",
         ),
         values: dict.from_list([#("value", "123")]),
+        matched_extractor: Some("test extractor"),
+        applied_enrichers: [],
       ),
     ],
     trans,

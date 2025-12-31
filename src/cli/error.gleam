@@ -7,6 +7,7 @@ import glaml
 import gleam/dict
 import gleam/int
 import gleam/list
+import gleam/option
 import gleam/string
 import gsv
 import input_loader/error as input_error
@@ -144,11 +145,22 @@ fn print_extracted_data_error(
   case err {
     extracted_data.KeyNotFound(key:) -> {
       let extracted_data_vars =
-        dict.to_list(data.values)
-        |> list.map(fn(val) {
-          let #(key, value) = val
-          #("value_" <> key, value)
-        })
+        list.flatten([
+          [
+            #(
+              "matched_extractor",
+              data.matched_extractor |> option.unwrap("null"),
+            ),
+          ],
+          list.index_map(data.applied_enrichers, fn(name, index) {
+            #("applied_enricher#" <> int.to_string(index), name)
+          }),
+          dict.to_list(data.values)
+            |> list.map(fn(val) {
+              let #(key, value) = val
+              #("value_" <> key, value)
+            }),
+        ])
 
       log.error("unable to find key in extracted data", [
         #("key", key),
