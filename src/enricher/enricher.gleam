@@ -36,29 +36,39 @@ pub fn with_children_decoder() -> decode.Decoder(List(Enricher)) {
     None,
     decode.optional(decode.string),
   )
-  use regexes <- decode.field("regexes", regex_list_decoder())
-  use values <- decode.field(
-    "values",
-    decode.dict(decode.string, parser.decode_template()),
-  )
 
   use children <- decode.optional_field(
     "children",
-    [],
-    decode.list(with_children_decoder()),
+    None,
+    decode.optional(decode.list(with_children_decoder())),
   )
+
   case children {
-    [] -> decode.success([Enricher(name, regexes, values)])
-    children ->
+    None -> {
+      use res <- decode.then(decoder())
+      decode.success([res])
+    }
+    Some(children) -> {
+      use regexes <- decode.optional_field("regexes", [], regex_list_decoder())
+      use values <- decode.optional_field(
+        "values",
+        dict.new(),
+        decode.dict(decode.string, parser.decode_template()),
+      )
+
       decode.success(
         list.map(list.flatten(children), fn(child) {
           Enricher(
-            ..child,
+            name: case name {
+              None -> child.name
+              Some(name) -> Some(name <> "/" <> child.name |> option.unwrap(""))
+            },
             regexes: list.append(regexes, child.regexes),
             values: dict.merge(values, child.values),
           )
         }),
       )
+    }
   }
 }
 

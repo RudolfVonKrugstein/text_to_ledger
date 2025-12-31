@@ -3,6 +3,7 @@ import cli/config/input_config
 import enricher/enricher
 import extractor/extractor
 import gleam/dynamic/decode
+import gleam/list
 
 /// Config file for cli
 pub type Config {
@@ -20,7 +21,10 @@ pub fn decoder() -> decode.Decoder(Config) {
     decode.list(extractor_config.decoder()),
   )
   use inputs <- decode.field("inputs", decode.list(input_config.decoder()))
-  use enrichers <- decode.field("enrichers", decode.list(enricher.decoder()))
+  use enrichers <- decode.field(
+    "enrichers",
+    decode.list(enricher.with_children_decoder()) |> decode.map(list.flatten),
+  )
 
   decode.success(Config(extractors:, inputs:, enrichers:))
 }
