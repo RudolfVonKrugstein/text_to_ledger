@@ -9,7 +9,7 @@ pub type Config {
   Config(
     /// Mappings from accound numbers to ledger accounts
     extractors: List(extractor.Extractor),
-    input: input_config.InputConfig,
+    inputs: List(input_config.InputConfig),
     enrichers: List(enricher.Enricher),
   )
 }
@@ -19,8 +19,8 @@ pub fn decoder() -> decode.Decoder(Config) {
     "extractors",
     decode.list(extractor_config.decoder()),
   )
-  use input <- decode.field("input", input_config.decoder())
+  use inputs <- decode.field("inputs", decode.list(input_config.decoder()))
   use enrichers <- decode.field("enrichers", decode.list(enricher.decoder()))
 
-  decode.success(Config(extractors:, input:, enrichers:))
+  decode.success(Config(extractors:, inputs:, enrichers:))
 }

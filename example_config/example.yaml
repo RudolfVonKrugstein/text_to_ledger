@@ -1,7 +1,7 @@
-input:
-  directory: /home/nathan/bank_statements/
-  name: home bank statements
-  type: directory
+inputs:
+  - directory: /home/nathan/bank_statements/
+    name: home bank statements
+    type: directory
 extractors:
   - type: text
     sheet:

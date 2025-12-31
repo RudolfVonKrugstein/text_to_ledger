@@ -55,12 +55,14 @@ pub fn map_collect_oks_and_errors(
 }
 
 pub fn run(
-  input_loader: input_loader.InputLoader,
+  input_loaders: List(input_loader.InputLoader),
   config: config.Config,
   extra_enrichers: String,
 ) {
   log.info("loading all input file into memory", [])
   io.println("")
+
+  use input_loader <- list.try_map(input_loaders)
 
   use in_files <- result.try(
     input_loader.load_all(input_loader, fn(in_file) {

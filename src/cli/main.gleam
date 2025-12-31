@@ -45,24 +45,27 @@ pub fn cli() {
     }),
   )
 
-  log.info("creating input loader", [
-    #("name", config.input.name),
-    #("type", input_config.name(config.input)),
-  ])
+  use input_loaders <- result.try(
+    config.inputs
+    |> list.try_map(fn(input: input_config.InputConfig) {
+      log.info("creating input loader", [
+        #("name", input.name),
+        #("type", input_config.name(input)),
+      ])
 
-  use input_loader <- result.try(
-    input_config.create_input_loader(config.input)
-    |> result.map_error(InputLoaderError),
+      input_config.create_input_loader(input)
+      |> result.map_error(InputLoaderError)
+    }),
   )
 
   log.info("running command", [])
 
   case command {
     command.RunParameters(_) -> {
-      run_command.run(input_loader, config)
+      run_command.run(input_loaders, config)
     }
     command.TestEnrichersParameters(config: _, extra_enrichers:) -> {
-      test_enrichers_command.run(input_loader, config, extra_enrichers)
+      test_enrichers_command.run(input_loaders, config, extra_enrichers)
     }
   }
 }
