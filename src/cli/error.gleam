@@ -147,6 +147,7 @@ fn print_extracted_data_error(
       let extracted_data_vars =
         list.flatten([
           [
+            #("content", data.input.content),
             #(
               "matched_extractor",
               data.matched_extractor |> option.unwrap("null"),
