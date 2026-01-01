@@ -82,8 +82,9 @@ pub fn decoder() -> decode.Decoder(Enricher) {
     decode.optional(decode.string),
   )
   use regexes <- decode.field("regexes", regex_list_decoder())
-  use values <- decode.field(
+  use values <- decode.optional_field(
     "values",
+    dict.new(),
     decode.dict(decode.string, parser.decode_template()),
   )
   decode.success(Enricher(name:, regexes:, values:))
