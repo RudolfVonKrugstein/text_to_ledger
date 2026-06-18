@@ -24,14 +24,24 @@ pub type Extractor {
     run: fn(input_file.InputFile) ->
       Result(
         #(extracted_data.ExtractedData, List(extracted_data.ExtractedData)),
-        ExtractorError,
+        ExtractRunError,
       ),
   )
 }
 
+/// Errors specific to an extractor's own work (parsing CSV, etc.).
 pub type ExtractorError {
-  EnricherError(enricher.EnricherError)
   CsvError(gsv.Error)
   CsvFileInvalid
   CsvColumnNotFound(column: csv_column.CsvColumn)
+}
+
+/// All the ways an `Extractor.run` call can fail.
+///
+/// An extractor runs an enricher internally to populate sheet values,
+/// so its failure is either a true extractor problem or a downstream
+/// enricher problem — kept as separate arms to preserve that origin.
+pub type ExtractRunError {
+  ExtractorFailure(extractor: ExtractorError)
+  EnricherFailure(enricher: enricher.EnricherError)
 }

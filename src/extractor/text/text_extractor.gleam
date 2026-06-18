@@ -18,7 +18,7 @@ fn run(
   config: TextExtractorConfig,
 ) -> Result(
   #(extracted_data.ExtractedData, List(extracted_data.ExtractedData)),
-  extractor.ExtractorError,
+  extractor.ExtractRunError,
 ) {
   // sheet data
   use sheet_data <- result.try(
@@ -26,7 +26,7 @@ fn run(
       extracted_data.empty(input) |> extracted_data.with_extractor(config.name),
       config.sheet,
     )
-    |> result.map_error(extractor.EnricherError),
+    |> result.map_error(extractor.EnricherFailure),
   )
 
   let transactions =

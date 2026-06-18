@@ -18,8 +18,7 @@ import template/template
 import yaml/yaml
 
 pub type ExtractFromFileError {
-  ExtractorError(err: extractor.ExtractorError)
-  NoExtractorMatch(errors: List(extractor.ExtractorError))
+  NoExtractorMatch(errors: List(extractor.ExtractRunError))
   ToManyExtractorMatched(num: Int)
   ExtractedDataError(
     data: extracted_data.ExtractedData,
@@ -133,7 +132,18 @@ fn print_extractor_error(
           ])
       }
     extractor.CsvFileInvalid -> log.error("csv file invalid", file_vars)
-    extractor.EnricherError(err) -> print_enricher_error(err, file_vars)
+  }
+}
+
+fn print_extract_run_error(
+  err: extractor.ExtractRunError,
+  file_vars: List(#(String, String)),
+) {
+  case err {
+    extractor.ExtractorFailure(extractor:) ->
+      print_extractor_error(extractor, file_vars)
+    extractor.EnricherFailure(enricher:) ->
+      print_enricher_error(enricher, file_vars)
   }
 }
 
@@ -192,11 +202,10 @@ fn print_extract_from_file_error(
     EnricherError(err:) -> print_enricher_error(err, file_vars)
     ExtractedDataError(data:, err:) ->
       print_extracted_data_error(err, data, file_vars)
-    ExtractorError(err:) -> print_extractor_error(err, file_vars)
-    NoExtractorMatch(errors:) ->
-      log.error("no extrator matched the file", [
-        #("errors", string.inspect(errors)),
-      ])
+    NoExtractorMatch(errors:) -> {
+      log.error("no extrator matched the file", file_vars)
+      list.each(errors, fn(e) { print_extract_run_error(e, file_vars) })
+    }
     ToManyExtractorMatched(num:) ->
       log.error("to many extrator matched the file", [
         #("num_matched_extractors", int.to_string(num)),

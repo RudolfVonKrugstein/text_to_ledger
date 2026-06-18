@@ -48,13 +48,15 @@ fn run(
   config: csv_extractor_config.CsvExtractorConfig,
 ) -> Result(
   #(extracted_data.ExtractedData, List(extracted_data.ExtractedData)),
-  extractor.ExtractorError,
+  extractor.ExtractRunError,
 ) {
   let body = string.trim(input.content)
 
   use by_index <- result.try(
     gsv.to_lists(body, config.seperator)
-    |> result.map_error(extractor.CsvError),
+    |> result.map_error(fn(e) {
+      extractor.ExtractorFailure(extractor.CsvError(e))
+    }),
   )
 
   let by_index = case config.with_headers {
@@ -66,7 +68,9 @@ fn run(
     False -> Ok(list.repeat(dict.new(), list.length(by_index)))
     True ->
       gsv.to_dicts(input.content, config.seperator)
-      |> result.map_error(extractor.CsvError)
+      |> result.map_error(fn(e) {
+        extractor.ExtractorFailure(extractor.CsvError(e))
+      })
   })
 
   use sheet <- result.try(
@@ -75,7 +79,7 @@ fn run(
         |> extracted_data.with_extractor(config.name),
       config.sheet,
     )
-    |> result.map_error(extractor.EnricherError),
+    |> result.map_error(extractor.EnricherFailure),
   )
 
   use transactions <- result.try(
@@ -83,6 +87,7 @@ fn run(
     |> list.map(fn(c) {
       let #(by_name, by_index) = c
       get_transaction_data(sheet, by_name, by_index, config.values)
+      |> result.map_error(extractor.ExtractorFailure)
     })
     |> result.all,
   )
