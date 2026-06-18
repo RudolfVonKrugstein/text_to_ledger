@@ -1,7 +1,7 @@
-import enricher/enricher
 import gleam/dynamic/decode
 import gleam/option.{type Option, None}
 import regex/area_regex
+import rule/rule
 
 /// Configuration for a text extractor.
 pub type TextExtractorConfig {
@@ -9,7 +9,7 @@ pub type TextExtractorConfig {
     /// The name
     name: Option(String),
     /// Global/sheet data
-    sheet: enricher.Enricher,
+    sheet: rule.Rule,
     /// The areas where each contains a transaction
     transaction_areas: area_regex.AreaRegex,
   )
@@ -21,7 +21,7 @@ pub fn decoder() -> decode.Decoder(TextExtractorConfig) {
     None,
     decode.optional(decode.string),
   )
-  use sheet <- decode.field("sheet", enricher.decoder())
+  use sheet <- decode.field("sheet", rule.decoder())
   use transaction_areas <- decode.field(
     "transaction_areas",
     area_regex.decoder(),

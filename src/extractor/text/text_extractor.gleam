@@ -2,16 +2,16 @@
 ////
 //// - It splits the transactions in the document using regexes
 ////   marking beginning and end of the area.
-//// - It extracts global/sheet values using an enricher.
+//// - It extracts global/sheet values using a rule.
 
 import data/extracted_data
-import enricher/enricher
 import extractor/extractor
 import extractor/text/text_extractor_config.{type TextExtractorConfig}
 import gleam/list
 import gleam/result
 import input_loader/input_file
 import regex/area_regex
+import rule/rule
 
 fn run(
   input: input_file.InputFile,
@@ -22,11 +22,11 @@ fn run(
 ) {
   // sheet data
   use sheet_data <- result.try(
-    enricher.apply(
+    rule.apply(
       extracted_data.empty(input) |> extracted_data.with_extractor(config.name),
       config.sheet,
     )
-    |> result.map_error(extractor.EnricherFailure),
+    |> result.map_error(extractor.RuleFailure),
   )
 
   let transactions =

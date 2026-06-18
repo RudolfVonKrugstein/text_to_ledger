@@ -1,6 +1,5 @@
 import cli/log
 import data/extracted_data
-import enricher/enricher
 import extractor/csv/csv_column
 import extractor/extractor
 import glaml
@@ -13,6 +12,7 @@ import gsv
 import input_loader/error as input_error
 import input_loader/input_file
 import paperless_api/error as api_error
+import rule/rule
 import simplifile
 import template/template
 import yaml/yaml
@@ -24,7 +24,7 @@ pub type ExtractFromFileError {
     data: extracted_data.ExtractedData,
     err: extracted_data.ExtractedDataError,
   )
-  EnricherError(err: enricher.EnricherError)
+  RuleError(err: rule.RuleError)
 }
 
 pub type Error {
@@ -78,24 +78,21 @@ pub fn log(e: Error) {
   }
 }
 
-fn print_enricher_error(
-  err: enricher.EnricherError,
-  file_vars: List(#(String, String)),
-) {
+fn print_rule_error(err: rule.RuleError, file_vars: List(#(String, String))) {
   case err {
-    enricher.RegexMatchError(string:, regex:) ->
-      log.error("enricher failed to match required regular expresssion", [
+    rule.RegexMatchError(string:, regex:) ->
+      log.error("rule failed to match required regular expresssion", [
         #("regex", regex),
         #("string", string),
         ..file_vars
       ])
-    enricher.InputValueNotFound(name:) ->
-      log.error("enricher failed to find input value", [
+    rule.InputValueNotFound(name:) ->
+      log.error("rule failed to find input value", [
         #("value_name", name),
         ..file_vars
       ])
-    enricher.TemplateRenderError(template:, error:) ->
-      log.error("enricher failed to render template", [
+    rule.TemplateRenderError(template:, error:) ->
+      log.error("rule failed to render template", [
         #("template", template),
         #("error", template.error_string(error)),
         ..file_vars
@@ -142,8 +139,7 @@ fn print_extract_run_error(
   case err {
     extractor.ExtractorFailure(extractor:) ->
       print_extractor_error(extractor, file_vars)
-    extractor.EnricherFailure(enricher:) ->
-      print_enricher_error(enricher, file_vars)
+    extractor.RuleFailure(rule:) -> print_rule_error(rule, file_vars)
   }
 }
 
@@ -163,8 +159,8 @@ fn print_extracted_data_error(
               data.matched_extractor |> option.unwrap("null"),
             ),
           ],
-          list.index_map(data.applied_enrichers, fn(name, index) {
-            #("applied_enricher#" <> int.to_string(index), name)
+          list.index_map(data.applied_rules, fn(name, index) {
+            #("applied_rule#" <> int.to_string(index), name)
           }),
           dict.to_list(data.values)
             |> list.map(fn(val) {
@@ -199,7 +195,7 @@ fn print_extract_from_file_error(
   ]
 
   case err {
-    EnricherError(err:) -> print_enricher_error(err, file_vars)
+    RuleError(err:) -> print_rule_error(err, file_vars)
     ExtractedDataError(data:, err:) ->
       print_extracted_data_error(err, data, file_vars)
     NoExtractorMatch(errors:) -> {

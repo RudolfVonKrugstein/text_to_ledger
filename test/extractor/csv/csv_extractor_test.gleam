@@ -1,5 +1,4 @@
 import data/extracted_data
-import enricher/enricher
 import extractor/csv/csv_column
 import extractor/csv/csv_extractor
 import extractor/csv/csv_extractor_config
@@ -10,6 +9,7 @@ import gleam/option.{None, Some}
 import gleeunit/should
 import input_loader/input_file
 import regex/regex
+import rule/rule
 import template/parser/parser
 
 pub fn run_csv_extractor_test() {
@@ -35,7 +35,7 @@ trans2,val2
   let config =
     csv_extractor_config.CsvExtractorConfig(
       name: Some("test extractor"),
-      sheet: enricher.Enricher(
+      sheet: rule.Rule(
         name: None,
         regexes: [extract_regex.ExtractRegex(value_re, on: "content")],
         values: dict.from_list([#("value", value_template)]),
@@ -58,7 +58,7 @@ trans2,val2
       input: input_file.InputFile(..input_file, content: sheet.input.content),
       values: dict.from_list([#("value", "123")]),
       matched_extractor: Some("test extractor"),
-      applied_enrichers: [],
+      applied_rules: [],
     ),
     sheet,
   )
@@ -68,13 +68,13 @@ trans2,val2
         input: input_file.InputFile(..input_file, content: sheet.input.content),
         values: dict.from_list([#("name", "trans1"), #("value", "val1")]),
         matched_extractor: Some("test extractor"),
-        applied_enrichers: [],
+        applied_rules: [],
       ),
       extracted_data.ExtractedData(
         input: input_file.InputFile(..input_file, content: sheet.input.content),
         values: dict.from_list([#("name", "trans2"), #("value", "val2")]),
         matched_extractor: Some("test extractor"),
-        applied_enrichers: [],
+        applied_rules: [],
       ),
     ],
     trans,

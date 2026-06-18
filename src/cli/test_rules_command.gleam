@@ -4,7 +4,6 @@ import cli/error
 import cli/log
 import data/extracted_data.{type ExtractedData}
 import data/ledger
-import enricher/enricher
 import gleam/int
 import gleam/io
 import gleam/list
@@ -12,6 +11,7 @@ import gleam/option.{None, Some}
 import gleam/result
 import input_loader/input_file
 import input_loader/input_loader
+import rule/rule
 import shiny
 import ui/progress
 import utils/misc
@@ -20,7 +20,7 @@ type InterimResult {
   IterimResult(
     files: List(input_file.InputFile),
     matched: #(List(ExtractedData), List(error.Error)),
-    enriched: List(ExtractedData),
+    applied: List(ExtractedData),
     ledger: #(List(ledger.LedgerEntry), List(error.Error)),
   )
 }
@@ -57,7 +57,7 @@ pub fn map_collect_oks_and_errors(
 pub fn run(
   input_loaders: List(input_loader.InputLoader),
   config: config.Config,
-  extra_enrichers: String,
+  extra_rules: String,
 ) {
   log.info("loading all input file into memory", [])
   io.println("")
@@ -114,28 +114,28 @@ pub fn run(
     |> list.flatten
 
   let num_transactions = list.length(transactions)
-  log.info("running enrichers", [
+  log.info("running rules", [
     #("#transactions", int.to_string(num_transactions)),
-    #("#enrichers", int.to_string(list.length(config.enrichers))),
+    #("#rules", int.to_string(list.length(config.rules))),
   ])
 
-  let #(enriched, enricher_errors) =
+  let #(applied, rule_errors) =
     map_collect_oks_and_errors(transactions, fn(transaction) {
-      list.try_fold(config.enrichers, transaction, fn(transaction, enricher) {
-        enricher.try_maybe_apply(transaction, enricher)
+      list.try_fold(config.rules, transaction, fn(transaction, rule) {
+        rule.try_maybe_apply(transaction, rule)
       })
     })
 
-  log.info("enriched transactions", [
-    #("#success", int.to_string(list.length(enriched))),
-    #("#fails", int.to_string(list.length(enricher_errors))),
+  log.info("applied rules to transactions", [
+    #("#success", int.to_string(list.length(applied))),
+    #("#fails", int.to_string(list.length(rule_errors))),
   ])
 
   log.info("converting to ledger", [
-    #("#transactions", int.to_string(list.length(enriched))),
+    #("#transactions", int.to_string(list.length(applied))),
   ])
   let #(ledgers, ledger_errors) =
-    map_collect_oks_and_errors(enriched, fn(transaction) {
+    map_collect_oks_and_errors(applied, fn(transaction) {
       ledger.from_extracted_data(transaction)
     })
   log.info("converted to ledger", [
@@ -143,7 +143,7 @@ pub fn run(
     #("#fails", int.to_string(list.length(ledger_errors))),
   ])
 
-  // let assert Ok(fs) = file_watcher.start(extra_enrichers)
+  // let assert Ok(fs) = file_watcher.start(extra_rules)
   // file_watcher.wait_for_event(fs)
 
   log.info("done waiting", [])

@@ -11,11 +11,11 @@
 ////   transactions from the lines.
 
 import data/extracted_data
-import enricher/enricher
 import extractor/csv/csv_column
 import gleam/option.{type Option}
 import gsv
 import input_loader/input_file
+import rule/rule
 
 /// The Extractor, its just the `run` function doing the extraction.
 pub type Extractor {
@@ -38,10 +38,10 @@ pub type ExtractorError {
 
 /// All the ways an `Extractor.run` call can fail.
 ///
-/// An extractor runs an enricher internally to populate sheet values,
+/// An extractor runs a rule internally to populate sheet values,
 /// so its failure is either a true extractor problem or a downstream
-/// enricher problem — kept as separate arms to preserve that origin.
+/// rule problem — kept as separate arms to preserve that origin.
 pub type ExtractRunError {
   ExtractorFailure(extractor: ExtractorError)
-  EnricherFailure(enricher: enricher.EnricherError)
+  RuleFailure(rule: rule.RuleError)
 }

@@ -42,7 +42,7 @@ extractors:
       amount: Brutto
       subject: Beschreibung
 
-enrichers:
+rules:
   - name: correct pypal amount
     regexes:
       bank: "PayPal"

@@ -4,7 +4,7 @@ import cli/config/input_config
 import cli/error.{InputLoaderError, ParseParameterError, YamlParseError}
 import cli/log
 import cli/run_command
-import cli/test_enrichers_command
+import cli/test_rules_command
 import dot_env
 import glaml
 import gleam/list
@@ -64,8 +64,8 @@ pub fn cli() {
     command.RunParameters(_) -> {
       run_command.run(input_loaders, config)
     }
-    command.TestEnrichersParameters(config: _, extra_enrichers:) -> {
-      test_enrichers_command.run(input_loaders, config, extra_enrichers)
+    command.TestRulesParameters(config: _, extra_rules:) -> {
+      test_rules_command.run(input_loaders, config, extra_rules)
     }
   }
 }

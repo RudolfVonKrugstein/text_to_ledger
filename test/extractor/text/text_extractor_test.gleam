@@ -1,5 +1,4 @@
 import data/extracted_data
-import enricher/enricher
 import extractor/extract_regex
 import extractor/text/text_extractor
 import extractor/text/text_extractor_config
@@ -10,6 +9,7 @@ import input_loader/input_file
 import regex/area_regex
 import regex/regex
 import regex/split_regex
+import rule/rule
 import template/parser/parser
 
 pub fn run_text_extractor_test() {
@@ -44,7 +44,7 @@ pub fn run_text_extractor_test() {
   let config =
     text_extractor_config.TextExtractorConfig(
       name: Some("test extractor"),
-      sheet: enricher.Enricher(
+      sheet: rule.Rule(
         name: None,
         regexes: [extract_regex.ExtractRegex(value_re, on: "content")],
         values: dict.from_list([#("value", value_template)]),
@@ -66,7 +66,7 @@ pub fn run_text_extractor_test() {
       input: input_file,
       values: dict.from_list([#("value", "123")]),
       matched_extractor: Some("test extractor"),
-      applied_enrichers: [],
+      applied_rules: [],
     ),
     sheet,
   )
@@ -79,7 +79,7 @@ pub fn run_text_extractor_test() {
         ),
         values: dict.from_list([#("value", "123")]),
         matched_extractor: Some("test extractor"),
-        applied_enrichers: [],
+        applied_rules: [],
       ),
       extracted_data.ExtractedData(
         input: input_file.InputFile(
@@ -88,7 +88,7 @@ pub fn run_text_extractor_test() {
         ),
         values: dict.from_list([#("value", "123")]),
         matched_extractor: Some("test extractor"),
-        applied_enrichers: [],
+        applied_rules: [],
       ),
     ],
     trans,

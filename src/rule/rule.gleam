@@ -1,4 +1,4 @@
-//// An enricher adds or updates variables to `ExtractedData`
+//// A rule adds or updates variables to `ExtractedData`
 //// by applying regexes to existing variable or the file content
 //// and rendering templates into new variables.
 
@@ -14,10 +14,10 @@ import regexp_ext
 import template/parser/parser
 import template/template
 
-/// The enricher to add information/variables to `ExtractedData`
-pub type Enricher {
-  Enricher(
-    /// Name of the enricher, just for tracing/debuging
+/// The rule to add information/variables to `ExtractedData`
+pub type Rule {
+  Rule(
+    /// Name of the rule, just for tracing/debuging
     name: Option(String),
     /// The regexes with named capture groups
     regexes: List(ExtractRegex),
@@ -26,11 +26,11 @@ pub type Enricher {
   )
 }
 
-/// Decode an enricher, that may have children.
+/// Decode a rule, that may have children.
 ///
-/// If it does not have children, than a list with just the enricher is returned.
-/// Otherwise the outer enricherer is merged with the children and returned as a list.
-pub fn with_children_decoder() -> decode.Decoder(List(Enricher)) {
+/// If it does not have children, than a list with just the rule is returned.
+/// Otherwise the outer rule is merged with the children and returned as a list.
+pub fn with_children_decoder() -> decode.Decoder(List(Rule)) {
   use name <- decode.optional_field(
     "name",
     None,
@@ -58,7 +58,7 @@ pub fn with_children_decoder() -> decode.Decoder(List(Enricher)) {
 
       decode.success(
         list.map(list.flatten(children), fn(child) {
-          Enricher(
+          Rule(
             name: case name {
               None -> child.name
               Some(name) -> Some(name <> "/" <> child.name |> option.unwrap(""))
@@ -72,10 +72,10 @@ pub fn with_children_decoder() -> decode.Decoder(List(Enricher)) {
   }
 }
 
-/// Decode a single enricher.
-/// 
-/// Decode an enricher from `Dynamic`
-pub fn decoder() -> decode.Decoder(Enricher) {
+/// Decode a single rule.
+///
+/// Decode a rule from `Dynamic`
+pub fn decoder() -> decode.Decoder(Rule) {
   use name <- decode.optional_field(
     "name",
     None,
@@ -87,7 +87,7 @@ pub fn decoder() -> decode.Decoder(Enricher) {
     dict.new(),
     decode.dict(decode.string, parser.decode_template()),
   )
-  decode.success(Enricher(name:, regexes:, values:))
+  decode.success(Rule(name:, regexes:, values:))
 }
 
 /// Decode a single regex or a list into a list
@@ -122,7 +122,7 @@ fn regex_list_decoder() -> decode.Decoder(List(ExtractRegex)) {
 }
 
 /// The errors that can happen through extraction
-pub type EnricherError {
+pub type RuleError {
   /// Regex did not match
   RegexMatchError(string: String, regex: String)
   /// Error during rendering of template
@@ -131,7 +131,7 @@ pub type EnricherError {
   InputValueNotFound(name: String)
 }
 
-pub fn error_string(e: EnricherError) -> String {
+pub fn error_string(e: RuleError) -> String {
   case e {
     RegexMatchError(string:, regex:) ->
       "Error matching regex:\n" <> regex <> "\non:\n" <> string
@@ -148,7 +148,7 @@ pub fn error_string(e: EnricherError) -> String {
 fn collect_variables(
   regexes: List(ExtractRegex),
   data: ExtractedData,
-) -> Result(dict.Dict(String, List(String)), EnricherError) {
+) -> Result(dict.Dict(String, List(String)), RuleError) {
   extend_variables(regexes, data, template.empty_vars())
 }
 
@@ -157,7 +157,7 @@ fn extend_variables(
   regexes: List(ExtractRegex),
   data: ExtractedData,
   start: template.Vars,
-) -> Result(dict.Dict(String, List(String)), EnricherError) {
+) -> Result(dict.Dict(String, List(String)), RuleError) {
   list.try_fold(regexes, start, fn(vars, regex) {
     use target <- result.try(case regex.on {
       "content" -> Ok(data.input.content)
@@ -208,16 +208,16 @@ fn dict_map_values_error(
   })
 }
 
-/// Apply an enricher to `ExtractedData`.
+/// Apply a rule to `ExtractedData`.
 /// Gives back an error if it can not be applied.
 pub fn apply(
   data: ExtractedData,
-  enricher: Enricher,
-) -> Result(ExtractedData, EnricherError) {
-  use vars <- result.try(collect_variables(enricher.regexes, data))
+  rule: Rule,
+) -> Result(ExtractedData, RuleError) {
+  use vars <- result.try(collect_variables(rule.regexes, data))
 
   use new_values <- result.try(
-    enricher.values
+    rule.values
     |> dict_map_values_error(fn(template) {
       template.render(template, vars)
       |> result.map_error(fn(error) {
@@ -228,19 +228,19 @@ pub fn apply(
 
   Ok(
     ExtractedData(..data, values: dict.merge(data.values, new_values))
-    |> extracted_data.with_option_enricher(enricher.name),
+    |> extracted_data.with_option_rule(rule.name),
   )
 }
 
-/// Apply an enricher to `ExtractedData`, but dont give
-/// back an error if the extractor cannot be applied
+/// Apply a rule to `ExtractedData`, but dont give
+/// back an error if the rule cannot be applied
 /// becaue a regex does not match or an input variable is not found.
 /// Instead give back `None` in these cases.
 pub fn try_apply(
   data: ExtractedData,
-  enricher: Enricher,
-) -> Result(Option(ExtractedData), EnricherError) {
-  case apply(data, enricher) {
+  rule: Rule,
+) -> Result(Option(ExtractedData), RuleError) {
+  case apply(data, rule) {
     Error(RegexMatchError(_, _)) -> Ok(None)
     Error(InputValueNotFound(_)) -> Ok(None)
     Error(e) -> Error(e)
@@ -252,7 +252,7 @@ pub fn try_apply(
 /// original data instead of None if it cannot be applied.
 pub fn try_maybe_apply(
   data: ExtractedData,
-  enricher: Enricher,
-) -> Result(ExtractedData, EnricherError) {
-  try_apply(data, enricher) |> result.map(option.unwrap(_, data))
+  rule: Rule,
+) -> Result(ExtractedData, RuleError) {
+  try_apply(data, rule) |> result.map(option.unwrap(_, data))
 }

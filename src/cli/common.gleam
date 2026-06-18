@@ -1,16 +1,16 @@
 import cli/config/config
 import cli/error.{
-  EnricherError, ExtractedDataError, NoExtractorMatch, ToManyExtractorMatched,
+  ExtractedDataError, NoExtractorMatch, RuleError, ToManyExtractorMatched,
 }
 import data/extracted_data
 import data/ledger
 import data/transaction_sheet
-import enricher/enricher
 import extractor/extractor
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/result
 import input_loader/input_file.{type InputFile}
+import rule/rule
 
 fn errors(results: List(Result(a, e))) -> List(e) {
   list.filter_map(results, fn(result) {
@@ -52,10 +52,10 @@ pub fn extract_from_file(input_file: InputFile, config: config.Config) {
 
   use transactions <- result.try(
     list.try_map(transactions, fn(trans) {
-      list.try_fold(config.enrichers, trans, fn(trans, enricher) {
+      list.try_fold(config.rules, trans, fn(trans, rule) {
         use new_trans <- result.try(
-          enricher.try_apply(trans, enricher)
-          |> result.map_error(EnricherError),
+          rule.try_apply(trans, rule)
+          |> result.map_error(RuleError),
         )
         case new_trans {
           None -> Ok(trans)

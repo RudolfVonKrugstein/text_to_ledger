@@ -1,9 +1,9 @@
 import cli/config/extractor_config
 import cli/config/input_config
-import enricher/enricher
 import extractor/extractor
 import gleam/dynamic/decode
 import gleam/list
+import rule/rule
 
 /// Config file for cli
 pub type Config {
@@ -11,7 +11,7 @@ pub type Config {
     /// Mappings from accound numbers to ledger accounts
     extractors: List(extractor.Extractor),
     inputs: List(input_config.InputConfig),
-    enrichers: List(enricher.Enricher),
+    rules: List(rule.Rule),
   )
 }
 
@@ -21,10 +21,10 @@ pub fn decoder() -> decode.Decoder(Config) {
     decode.list(extractor_config.decoder()),
   )
   use inputs <- decode.field("inputs", decode.list(input_config.decoder()))
-  use enrichers <- decode.field(
-    "enrichers",
-    decode.list(enricher.with_children_decoder()) |> decode.map(list.flatten),
+  use rules <- decode.field(
+    "rules",
+    decode.list(rule.with_children_decoder()) |> decode.map(list.flatten),
   )
 
-  decode.success(Config(extractors:, inputs:, enrichers:))
+  decode.success(Config(extractors:, inputs:, rules:))
 }

@@ -6,7 +6,6 @@
 ////   title.
 
 import data/extracted_data
-import enricher/enricher
 import extractor/csv/csv_column
 import extractor/csv/csv_extractor_config
 import extractor/csv/csv_value
@@ -17,6 +16,7 @@ import gleam/result
 import gleam/string
 import gsv
 import input_loader/input_file
+import rule/rule
 
 fn get_transaction_data(
   input: extracted_data.ExtractedData,
@@ -74,12 +74,12 @@ fn run(
   })
 
   use sheet <- result.try(
-    enricher.apply(
+    rule.apply(
       extracted_data.empty(input_file.InputFile(..input, content: input.title))
         |> extracted_data.with_extractor(config.name),
       config.sheet,
     )
-    |> result.map_error(extractor.EnricherFailure),
+    |> result.map_error(extractor.RuleFailure),
   )
 
   use transactions <- result.try(

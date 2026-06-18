@@ -1,6 +1,6 @@
 //// Extracted data is "raw" data extracted form an input document.
 //// It is a list of variables with text values, that have been extracted
-//// from input documents (text) using extractors and enrichers.
+//// from input documents (text) using extractors and rules.
 ////
 //// Extracted data is used to create output value, like ledger entries
 //// from. To do that, this module provides various methods to create
@@ -23,8 +23,8 @@ pub type ExtractedData {
     input: input_file.InputFile,
     /// The matched extractor
     matched_extractor: Option(String),
-    /// The applied enrichers
-    applied_enrichers: List(String),
+    /// The applied rules
+    applied_rules: List(String),
     /// The values extracted (so far).
     /// This is a dict from the variable name to the variable value
     /// which is always a string at this point.
@@ -51,16 +51,16 @@ pub fn with_extractor(data: ExtractedData, name: Option(String)) {
   ExtractedData(..data, matched_extractor: name)
 }
 
-/// Add an enricher to the extracted data
-pub fn with_enricher(data: ExtractedData, name: String) {
-  ExtractedData(..data, applied_enrichers: [name, ..data.applied_enrichers])
+/// Add a rule to the extracted data
+pub fn with_rule(data: ExtractedData, name: String) {
+  ExtractedData(..data, applied_rules: [name, ..data.applied_rules])
 }
 
-/// Add an enricher to the extracted data, if not None
-pub fn with_option_enricher(data: ExtractedData, name: Option(String)) {
+/// Add a rule to the extracted data, if not None
+pub fn with_option_rule(data: ExtractedData, name: Option(String)) {
   case name {
     None -> data
-    Some(name) -> data |> with_enricher(name)
+    Some(name) -> data |> with_rule(name)
   }
 }
 
@@ -78,7 +78,7 @@ pub fn update_input(data: ExtractedData, input: input_file.InputFile) {
 
 /// Convert to a json object, i.E. to serialize to disc.
 pub fn to_json(extracted_data: ExtractedData) -> json.Json {
-  let ExtractedData(input:, values:, matched_extractor:, applied_enrichers:) =
+  let ExtractedData(input:, values:, matched_extractor:, applied_rules:) =
     extracted_data
   json.object([
     #("input", input_file.to_json(input)),
@@ -87,7 +87,7 @@ pub fn to_json(extracted_data: ExtractedData) -> json.Json {
       None -> json.null()
       Some(name) -> json.string(name)
     }),
-    #("applied_enrichers", json.array(applied_enrichers, json.string)),
+    #("applied_rules", json.array(applied_rules, json.string)),
   ])
 }
 
@@ -99,12 +99,12 @@ pub fn decoder() -> decode.Decoder(ExtractedData) {
     decode.dict(decode.string, decode.string),
   )
   use matched_extractor <- decode.then(decode.optional(decode.string))
-  use applied_enrichers <- decode.then(decode.list(decode.string))
+  use applied_rules <- decode.then(decode.list(decode.string))
   decode.success(ExtractedData(
     input:,
     values:,
     matched_extractor:,
-    applied_enrichers:,
+    applied_rules:,
   ))
 }
 

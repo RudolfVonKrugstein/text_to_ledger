@@ -1,10 +1,10 @@
-import enricher/enricher
 import extractor/csv/csv_column
 import extractor/csv/csv_value
 import gleam/dict
 import gleam/dynamic/decode
 import gleam/list
 import gleam/option.{None}
+import rule/rule
 
 /// Configuration for a CSV extractor
 pub type CsvExtractorConfig {
@@ -16,7 +16,7 @@ pub type CsvExtractorConfig {
     /// How the CSV seperates values (a usual choice is ",")
     seperator: String,
     /// Data set on the sheet/global level
-    sheet: enricher.Enricher,
+    sheet: rule.Rule,
     /// List of values to extract from the CSV file
     /// into variables in the extracted data.
     values: List(csv_value.CsvValue),
@@ -31,7 +31,7 @@ pub fn decoder() -> decode.Decoder(CsvExtractorConfig) {
   )
   use with_headers <- decode.field("with_headers", decode.bool)
   use seperator <- decode.optional_field("seperator", ",", decode.string)
-  use sheet <- decode.field("sheet", enricher.decoder())
+  use sheet <- decode.field("sheet", rule.decoder())
   use values <- decode.field(
     "values",
     decode.dict(decode.string, csv_column.decoder()),
