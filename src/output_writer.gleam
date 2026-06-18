@@ -75,7 +75,10 @@ pub fn write(writer: Writer, entry: ledger.LedgerEntry) {
   Ok(Writer(..writer, all_files: set.insert(writer.all_files, file)))
 }
 
-fn set_try_each(set: set.Set(a), fun: fn(a) -> Result(Nil, e)) -> Result(Nil, e) {
+fn set_try_each(
+  set: set.Set(a),
+  fun: fn(a) -> Result(Nil, e),
+) -> Result(Nil, e) {
   set.fold(set, Ok(Nil), fn(acc, member) {
     case acc {
       Ok(_) -> fun(member)

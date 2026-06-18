@@ -95,7 +95,9 @@ fn get_next(
   }
 }
 
-pub fn run_all(req: PagedRequest(a)) -> Result(List(a), error.PaperlessApiError) {
+pub fn run_all(
+  req: PagedRequest(a),
+) -> Result(List(a), error.PaperlessApiError) {
   use #(page, next) <- result.try(run_request(req))
   case next {
     None -> Ok(page.results)
