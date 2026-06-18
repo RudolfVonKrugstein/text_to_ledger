@@ -33,6 +33,9 @@ pub type Error {
   YamlParseError(file: String, error: yaml.YamlDecodeError)
   InputLoaderError(err: input_error.InputLoaderError)
   ExtractFromFileError(file: input_file.InputFile, err: ExtractFromFileError)
+  LoadExtraRulesError(file: String, message: String)
+  SaveExtraRulesError(file: String, error: simplifile.FileError)
+  EditorError(message: String)
 }
 
 pub fn log(e: Error) {
@@ -49,6 +52,21 @@ pub fn log(e: Error) {
     }
     ExtractFromFileError(file:, err:) ->
       print_extract_from_file_error(file, err)
+    LoadExtraRulesError(file:, message:) -> {
+      log.error("unable to load extra rules file", [
+        #("file", file),
+        #("message", message),
+      ])
+    }
+    SaveExtraRulesError(file:, error:) -> {
+      log.error("unable to save extra rules file", [
+        #("file", file),
+        #("error", string.inspect(error)),
+      ])
+    }
+    EditorError(message:) -> {
+      log.error("unable to launch editor", [#("message", message)])
+    }
     YamlParseError(file:, error:) ->
       case error {
         yaml.YamlError(glaml.ParsingError(msg:, loc:)) ->

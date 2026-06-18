@@ -49,7 +49,10 @@ fn extract_with_input_loader(
   })
 }
 
-pub fn run(input_loaders: List(input_loader.InputLoader), config: config.Config) {
+pub fn run(
+  input_loaders: List(input_loader.InputLoader),
+  config: config.Config,
+) {
   use input_loader <- list.try_map(input_loaders)
 
   use extracted <- result.try(extract_with_input_loader(input_loader, config))
