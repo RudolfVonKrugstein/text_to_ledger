@@ -2,47 +2,62 @@
 
 -export([run/2]).
 
-%% Run an external command with `Input` written to its stdin and capture
-%% stdout (plus stderr). The command is provided as a non-empty list of
-%% binaries (program followed by its arguments).
+%% Run an external "suggester" command. The command receives two paths via
+%% environment variables:
+%%   T2L_PROMPT_FILE     — already populated with the prompt
+%%   T2L_SUGGESTION_FILE — path the command must write its suggestion to
 %%
-%% We materialise the input as a temp file and redirect stdin through the
-%% shell instead of trying to half-close the Erlang port's stdin pipe.
+%% The command inherits the terminal's stdin/stdout/stderr so the user can
+%% see progress and debug the script. We return the contents of
+%% T2L_SUGGESTION_FILE on success.
 run(ArgsList, Input) when is_list(ArgsList), is_binary(Input) ->
     case [unicode:characters_to_list(A) || A <- ArgsList] of
         [] ->
             {error, <<"suggester command is empty">>};
-        [Cmd | Rest] ->
-            TmpFile = make_tmp_path("t2l_suggest_in_"),
-            case file:write_file(TmpFile, Input) of
+        Args ->
+            PromptFile = make_tmp_path("t2l_suggest_prompt_"),
+            SuggestionFile = make_tmp_path("t2l_suggest_out_"),
+            case file:write_file(PromptFile, Input) of
                 {error, Reason} ->
                     {error,
                         unicode:characters_to_binary(
-                            io_lib:format("failed to write tmp file ~ts: ~p", [
-                                TmpFile, Reason
+                            io_lib:format("failed to write prompt file ~ts: ~p", [
+                                PromptFile, Reason
                             ])
                         )};
                 ok ->
+                    file:write_file(SuggestionFile, <<>>),
+                    Env = [
+                        {"T2L_PROMPT_FILE", PromptFile},
+                        {"T2L_SUGGESTION_FILE", SuggestionFile}
+                    ],
+                    print_env(Env),
                     try
-                        CmdLine =
-                            shell_escape(Cmd) ++
-                                " " ++ string:join(
-                                    [shell_escape(A) || A <- Rest], " "
-                                ) ++
-                                " < " ++ shell_escape(TmpFile),
-                        %% Let stderr pass through to the user's terminal so
-                        %% they see Ollama's progress spinner / errors live,
-                        %% while we capture only stdout (the model output).
-                        %% TERM=dumb discourages CLIs that still draw escape
-                        %% sequences to stdout from doing so.
+                        CmdLine = string:join(
+                            [shell_escape(A) || A <- Args], " "
+                        ),
                         Port = erlang:open_port({spawn, CmdLine}, [
-                            binary,
-                            use_stdio,
+                            nouse_stdio,
                             exit_status,
-                            hide,
-                            {env, [{"TERM", "dumb"}]}
+                            {env, Env}
                         ]),
-                        collect(Port, <<>>)
+                        case wait_for_exit(Port) of
+                            ok ->
+                                case file:read_file(SuggestionFile) of
+                                    {ok, Bin} ->
+                                        {ok, Bin};
+                                    {error, R} ->
+                                        {error,
+                                            unicode:characters_to_binary(
+                                                io_lib:format(
+                                                    "failed to read suggestion file ~ts: ~p",
+                                                    [SuggestionFile, R]
+                                                )
+                                            )}
+                                end;
+                            {error, _} = Err ->
+                                Err
+                        end
                     catch
                         Class:Reason ->
                             {error,
@@ -52,22 +67,28 @@ run(ArgsList, Input) when is_list(ArgsList), is_binary(Input) ->
                                     ])
                                 )}
                     after
-                        file:delete(TmpFile)
+                        file:delete(PromptFile),
+                        file:delete(SuggestionFile)
                     end
             end
     end.
 
-collect(Port, Acc) ->
+print_env(Env) ->
+    io:format("suggester environment:~n"),
+    lists:foreach(
+        fun({K, V}) -> io:format("  ~s=~ts~n", [K, V]) end,
+        Env
+    ).
+
+wait_for_exit(Port) ->
     receive
-        {Port, {data, Data}} ->
-            collect(Port, <<Acc/binary, Data/binary>>);
         {Port, {exit_status, 0}} ->
-            {ok, Acc};
+            ok;
         {Port, {exit_status, N}} ->
-            Header = unicode:characters_to_binary(
-                io_lib:format("suggester exited with status ~p:\n", [N])
-            ),
-            {error, <<Header/binary, Acc/binary>>};
+            {error,
+                unicode:characters_to_binary(
+                    io_lib:format("suggester exited with status ~p", [N])
+                )};
         {'EXIT', Port, Reason} ->
             {error,
                 unicode:characters_to_binary(

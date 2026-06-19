@@ -4,11 +4,16 @@
 ////
 //// ```yaml
 //// suggester:
-////   command: ["ollama", "run", "qwen2.5:3b"]
+////   command: ["bash", "/path/to/suggest.sh"]
 //// ```
 ////
-//// The command is invoked with the prompt redirected to its stdin and its
-//// stdout is captured and used as the seed for the editor.
+//// The command is invoked with two environment variables:
+////   - `T2L_PROMPT_FILE`: path to a file containing the prompt
+////   - `T2L_SUGGESTION_FILE`: path the command must write its suggestion to
+////
+//// stdin/stdout/stderr are inherited from the terminal so the user can see
+//// the command's progress and debug it. The contents of
+//// `T2L_SUGGESTION_FILE` are used as the seed for the editor.
 
 import gleam/bit_array
 import gleam/dynamic/decode
@@ -22,8 +27,10 @@ pub fn decoder() -> decode.Decoder(Suggester) {
   decode.success(Suggester(command:))
 }
 
-/// Run the suggester. The prompt is piped to the command's stdin; whatever
-/// is written to stdout (plus stderr) is returned as a UTF-8 string.
+/// Run the suggester. The prompt is written to a temp file whose path is
+/// passed via `T2L_PROMPT_FILE`; the command is expected to write its
+/// suggestion to the path in `T2L_SUGGESTION_FILE`. That file's contents
+/// are returned as a UTF-8 string.
 pub fn suggest(s: Suggester, prompt: String) -> Result(String, String) {
   case run_ffi(s.command, bit_array.from_string(prompt)) {
     Ok(bits) ->
