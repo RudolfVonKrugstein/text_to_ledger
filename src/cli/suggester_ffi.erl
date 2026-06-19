@@ -2,35 +2,30 @@
 
 -export([run/2]).
 
-%% Run an external "suggester" command. The command receives two paths via
-%% environment variables:
-%%   T2L_PROMPT_FILE     — already populated with the prompt
-%%   T2L_SUGGESTION_FILE — path the command must write its suggestion to
+%% Run an external "suggester" command.
+%%
+%% Each {EnvVar, Content} pair in Inputs becomes a temp file holding Content;
+%% its path is exposed to the command via the env var EnvVar. We also create
+%% one extra temp file for the suggestion output, exposed as
+%% T2L_SUGGESTION_FILE.
 %%
 %% The command inherits the terminal's stdin/stdout/stderr so the user can
 %% see progress and debug the script. We return the contents of
 %% T2L_SUGGESTION_FILE on success.
-run(ArgsList, Input) when is_list(ArgsList), is_binary(Input) ->
+run(ArgsList, Inputs) when is_list(ArgsList), is_list(Inputs) ->
     case [unicode:characters_to_list(A) || A <- ArgsList] of
         [] ->
             {error, <<"suggester command is empty">>};
         Args ->
-            PromptFile = make_tmp_path("t2l_suggest_prompt_"),
-            SuggestionFile = make_tmp_path("t2l_suggest_out_"),
-            case file:write_file(PromptFile, Input) of
-                {error, Reason} ->
-                    {error,
-                        unicode:characters_to_binary(
-                            io_lib:format("failed to write prompt file ~ts: ~p", [
-                                PromptFile, Reason
-                            ])
-                        )};
-                ok ->
+            case make_input_files(Inputs) of
+                {error, _} = E ->
+                    E;
+                {ok, InputFiles} ->
+                    SuggestionFile = make_tmp_path("t2l_suggest_out_"),
                     file:write_file(SuggestionFile, <<>>),
-                    Env = [
-                        {"T2L_PROMPT_FILE", PromptFile},
-                        {"T2L_SUGGESTION_FILE", SuggestionFile}
-                    ],
+                    Env =
+                        [{K, P} || {K, P, _} <- InputFiles] ++
+                            [{"T2L_SUGGESTION_FILE", SuggestionFile}],
                     print_env(Env),
                     try
                         CmdLine = string:join(
@@ -67,10 +62,31 @@ run(ArgsList, Input) when is_list(ArgsList), is_binary(Input) ->
                                     ])
                                 )}
                     after
-                        file:delete(PromptFile),
+                        [file:delete(P) || {_, P, _} <- InputFiles],
                         file:delete(SuggestionFile)
                     end
             end
+    end.
+
+make_input_files(Inputs) ->
+    make_input_files(Inputs, []).
+
+make_input_files([], Acc) ->
+    {ok, lists:reverse(Acc)};
+make_input_files([{KeyBin, ContentBin} | Rest], Acc) ->
+    Key = unicode:characters_to_list(KeyBin),
+    Path = make_tmp_path("t2l_suggest_in_"),
+    case file:write_file(Path, ContentBin) of
+        ok ->
+            make_input_files(Rest, [{Key, Path, ContentBin} | Acc]);
+        {error, R} ->
+            [file:delete(P) || {_, P, _} <- Acc],
+            {error,
+                unicode:characters_to_binary(
+                    io_lib:format("failed to write input file ~ts: ~p", [
+                        Path, R
+                    ])
+                )}
     end.
 
 print_env(Env) ->

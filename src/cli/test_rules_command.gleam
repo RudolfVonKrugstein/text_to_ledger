@@ -94,7 +94,37 @@ fn load_extra_rules(
 }
 
 fn rules_decoder() {
-  decode.list(rule.with_children_decoder()) |> decode.map(list.flatten)
+  decode.one_of(
+    decode.list(rule.with_children_decoder()) |> decode.map(list.flatten),
+    or: [rule.with_children_decoder()],
+  )
+}
+
+/// Wrap a single-rule YAML document (top-level mapping) into a list item so it
+/// can be appended to a rules file whose top level is a list. If the input
+/// already starts with `-` it is returned unchanged.
+fn wrap_as_list_item(text: String) -> String {
+  let trimmed = string.trim(text)
+  let lines = string.split(trimmed, "\n")
+  let first_content =
+    list.find(lines, fn(l) {
+      let t = string.trim_start(l)
+      t != "" && !string.starts_with(t, "#")
+    })
+  case first_content {
+    Ok(line) ->
+      case string.starts_with(string.trim_start(line), "-") {
+        True -> trimmed
+        False ->
+          case lines {
+            [] -> trimmed
+            [first, ..rest] ->
+              ["- " <> first, ..list.map(rest, fn(l) { "  " <> l })]
+              |> string.join("\n")
+          }
+      }
+    Error(_) -> trimmed
+  }
 }
 
 fn parse_rules(text: String) -> Result(List(rule.Rule), String) {
@@ -121,12 +151,11 @@ fn yaml_error_string(e: yaml.YamlDecodeError) -> String {
       "rule decode error:\n  "
       <> string.join(
         list.map(errs, fn(e) {
-          "expected "
-          <> e.expected
-          <> ", found "
-          <> e.found
-          <> " at "
-          <> string.join(e.path, ".")
+          let path = case e.path {
+            [] -> "root"
+            p -> string.join(p, ".")
+          }
+          "expected " <> e.expected <> ", found " <> e.found <> " at " <> path
         }),
         "\n  ",
       )
@@ -229,15 +258,23 @@ fn initial_user_input(
     None -> skeleton_rule(missing)
     Some(s) -> {
       log.info("asking suggester for a rule", [])
-      let prompt = build_prompt(applied, missing, examples)
-      case suggester.suggest(s, prompt) {
-        Ok(raw) -> {
-          let cleaned = clean_llm_output(raw)
-          case string.trim(cleaned) {
+      let values =
+        dict.to_list(applied.values)
+        |> list.sort(fn(a, b) { string.compare(a.0, b.0) })
+        |> list.map(fn(kv) { kv.0 <> ": " <> kv.1 })
+        |> string.join("\n")
+      let inputs = [
+        #("T2L_EXAMPLES_FILE", examples),
+        #("T2L_CONTENT_FILE", applied.input.content),
+        #("T2L_VALUES_FILE", values),
+        #("T2L_MISSING_KEYS_FILE", string.join(missing, ", ")),
+      ]
+      case suggester.suggest(s, inputs) {
+        Ok(raw) ->
+          case string.trim(raw) {
             "" -> skeleton_rule(missing)
-            _ -> cleaned
+            _ -> raw
           }
-        }
         Error(msg) -> {
           log.error("suggester failed, falling back to skeleton", [
             #("error", msg),
@@ -247,75 +284,6 @@ fn initial_user_input(
       }
     }
   }
-}
-
-fn build_prompt(
-  applied: ExtractedData,
-  missing: List(String),
-  examples: String,
-) -> String {
-  let value_lines =
-    dict.to_list(applied.values)
-    |> list.sort(fn(a, b) { string.compare(a.0, b.0) })
-    |> list.map(fn(kv) { "  " <> kv.0 <> ": " <> kv.1 })
-    |> string.join("\n")
-
-  let examples_block = case string.trim(examples) {
-    "" -> "(no examples yet — invent a reasonable first rule)"
-    e -> e
-  }
-
-  "You are classifying a bank transaction so it can be turned into a ledger entry.
-
-Each YAML rule below has `name`, `regexes` and `values`. A rule's `regexes`
-map a transaction field name to a regex; the rule fires when every regex
-matches, and then its `values` are merged into the transaction.
-
-The ledger entry requires these fields: date, payee, source_account,
-target_account, amount.
-
-Existing rules (use them as a style guide, and for the target_account
-naming convention):
-
-"
-  <> examples_block
-  <> "
-
-Now classify this new transaction.
-
-Already-extracted fields:
-"
-  <> value_lines
-  <> "
-
-Raw transaction content:
----
-"
-  <> applied.input.content
-  <> "
----
-
-The following ledger fields are still missing and your rule must set them:
-  "
-  <> string.join(missing, ", ")
-  <> "
-
-Respond with exactly one YAML list containing one rule. Use a regex on the
-`subject` field (or another extracted field) that uniquely matches this
-transaction's category. Output ONLY the YAML, no markdown fences, no
-explanation, no leading or trailing prose.
-"
-}
-
-fn clean_llm_output(raw: String) -> String {
-  string.split(raw, "\n")
-  |> list.filter(fn(line) {
-    let t = string.trim_start(line)
-    !string.starts_with(t, "```") && !string.starts_with(t, "~~~")
-  })
-  |> string.join("\n")
-  |> string.trim
-  |> fn(s) { s <> "\n" }
 }
 
 fn apply_rules(
@@ -377,13 +345,9 @@ fn editor_loop(
 
   use new_user_input <- result.try(launch_editor(seed))
 
-  case
-    string.trim(new_user_input) == "",
-    string.trim(new_user_input) == string.trim(user_input)
-  {
-    True, _ -> Ok(Stop)
-    _, True -> Ok(Stop)
-    False, False ->
+  case string.trim(new_user_input) == "" {
+    True -> Ok(Stop)
+    False ->
       case parse_rules(new_user_input) {
         Error(msg) ->
           editor_loop(
@@ -412,13 +376,10 @@ fn editor_loop(
             Ok(new_applied) ->
               case ledger.from_extracted_data(new_applied) {
                 Ok(_) -> {
+                  let to_append = wrap_as_list_item(new_user_input)
                   let new_text = case state.text {
-                    "" -> string.trim(new_user_input) <> "\n"
-                    t ->
-                      string.trim_end(t)
-                      <> "\n"
-                      <> string.trim(new_user_input)
-                      <> "\n"
+                    "" -> to_append <> "\n"
+                    t -> string.trim_end(t) <> "\n" <> to_append <> "\n"
                   }
                   use _ <- result.try(
                     simplifile.write(extra_rules_path, new_text)
