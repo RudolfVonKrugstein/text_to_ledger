@@ -11,6 +11,7 @@ import cli/config/config
 import cli/editor
 import cli/error
 import cli/log
+import cli/suggester
 import data/extracted_data.{type ExtractedData}
 import data/ledger
 import glaml
@@ -18,7 +19,7 @@ import gleam/dict
 import gleam/dynamic/decode
 import gleam/int
 import gleam/list
-import gleam/option.{None, Some}
+import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/string
 import input_loader/input_file.{type InputFile}
@@ -173,7 +174,8 @@ fn process_file(
   list.try_fold(transactions, Continue(state), fn(outcome, t) {
     case outcome {
       Stop -> Ok(Stop)
-      Continue(state) -> process_transaction(t, file, extra_rules_path, state)
+      Continue(state) ->
+        process_transaction(t, file, extra_rules_path, state, config.suggester)
     }
   })
 }
@@ -183,6 +185,7 @@ fn process_transaction(
   file: InputFile,
   extra_rules_path: String,
   state: State,
+  suggester: Option(suggester.Suggester),
 ) -> Result(Outcome, error.Error) {
   case apply_rules(transaction, state.active_rules) {
     Error(rule_err) ->
@@ -196,13 +199,14 @@ fn process_transaction(
             #("file", file.name),
             #("missing", string.join(missing, ", ")),
           ])
+          let seed = initial_user_input(suggester, applied, missing, state.text)
           editor_loop(
             transaction,
             applied,
             file,
             extra_rules_path,
             state,
-            skeleton_rule(missing),
+            seed,
             "missing key: " <> key,
           )
         }
@@ -213,6 +217,105 @@ fn process_transaction(
           ))
       }
   }
+}
+
+fn initial_user_input(
+  suggester: Option(suggester.Suggester),
+  applied: ExtractedData,
+  missing: List(String),
+  examples: String,
+) -> String {
+  case suggester {
+    None -> skeleton_rule(missing)
+    Some(s) -> {
+      log.info("asking suggester for a rule", [])
+      let prompt = build_prompt(applied, missing, examples)
+      case suggester.suggest(s, prompt) {
+        Ok(raw) -> {
+          let cleaned = clean_llm_output(raw)
+          case string.trim(cleaned) {
+            "" -> skeleton_rule(missing)
+            _ -> cleaned
+          }
+        }
+        Error(msg) -> {
+          log.error("suggester failed, falling back to skeleton", [
+            #("error", msg),
+          ])
+          skeleton_rule(missing)
+        }
+      }
+    }
+  }
+}
+
+fn build_prompt(
+  applied: ExtractedData,
+  missing: List(String),
+  examples: String,
+) -> String {
+  let value_lines =
+    dict.to_list(applied.values)
+    |> list.sort(fn(a, b) { string.compare(a.0, b.0) })
+    |> list.map(fn(kv) { "  " <> kv.0 <> ": " <> kv.1 })
+    |> string.join("\n")
+
+  let examples_block = case string.trim(examples) {
+    "" -> "(no examples yet — invent a reasonable first rule)"
+    e -> e
+  }
+
+  "You are classifying a bank transaction so it can be turned into a ledger entry.
+
+Each YAML rule below has `name`, `regexes` and `values`. A rule's `regexes`
+map a transaction field name to a regex; the rule fires when every regex
+matches, and then its `values` are merged into the transaction.
+
+The ledger entry requires these fields: date, payee, source_account,
+target_account, amount.
+
+Existing rules (use them as a style guide, and for the target_account
+naming convention):
+
+"
+  <> examples_block
+  <> "
+
+Now classify this new transaction.
+
+Already-extracted fields:
+"
+  <> value_lines
+  <> "
+
+Raw transaction content:
+---
+"
+  <> applied.input.content
+  <> "
+---
+
+The following ledger fields are still missing and your rule must set them:
+  "
+  <> string.join(missing, ", ")
+  <> "
+
+Respond with exactly one YAML list containing one rule. Use a regex on the
+`subject` field (or another extracted field) that uniquely matches this
+transaction's category. Output ONLY the YAML, no markdown fences, no
+explanation, no leading or trailing prose.
+"
+}
+
+fn clean_llm_output(raw: String) -> String {
+  string.split(raw, "\n")
+  |> list.filter(fn(line) {
+    let t = string.trim_start(line)
+    !string.starts_with(t, "```") && !string.starts_with(t, "~~~")
+  })
+  |> string.join("\n")
+  |> string.trim
+  |> fn(s) { s <> "\n" }
 }
 
 fn apply_rules(
@@ -370,9 +473,8 @@ fn build_context(
   let matched_extractor =
     applied.matched_extractor |> option.unwrap("(unnamed)")
 
-  let content_snippet = truncate(applied.input.content, 800)
   let content_lines =
-    string.split(content_snippet, "\n")
+    string.split(applied.input.content, "\n")
     |> list.map(fn(l) { "#   " <> l })
     |> string.join("\n")
 
@@ -401,18 +503,11 @@ fn build_context(
   <> "# values:\n"
   <> values_lines
   <> "\n#\n"
-  <> "# content (truncated):\n"
+  <> "# content:\n"
   <> content_lines
   <> "\n#\n"
   <> "# ===== Status =====\n"
   <> err_lines
-}
-
-fn truncate(s: String, n: Int) -> String {
-  case string.length(s) {
-    l if l <= n -> s
-    _ -> string.slice(s, 0, n) <> "\n... (truncated)"
-  }
 }
 
 fn launch_editor(seed: String) -> Result(String, error.Error) {

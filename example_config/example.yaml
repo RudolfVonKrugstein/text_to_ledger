@@ -1,7 +1,9 @@
 inputs:
-  - directory: /home/nathan/bank_statements/
+  - directory: ./test_ledger
     name: home bank statements
     type: directory
+suggester:
+  command: ["ollama", "run", "qwen2.5:3b"]
 extractors:
   - type: text
     sheet:
