@@ -1,25 +1,44 @@
 import cli/common
 import cli/config/config
 import cli/error.{ExtractFromFileError, InputLoaderError}
+import gleam/float
 import gleam/int
 import gleam/io
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/result
+import gleam/string
 import input_loader/input_loader
-import shiny
-import ui/progress
-import utils/misc
+
+fn clear_line() {
+  io.print("\u{001B}[2K\r")
+}
+
+fn move_cursor_up(lines: Int) {
+  io.print("\u{001B}[" <> int.to_string(lines) <> "A")
+}
+
+fn progress_bar(current: Int, total: Int, width: Int) -> String {
+  let progress = case total {
+    0 -> 0.0
+    _ -> int.to_float(current) /. int.to_float(total)
+  }
+  let filled = float.round(progress *. int.to_float(width))
+  let filled_str = string.repeat("█", filled)
+  let empty_str = string.repeat("░", width - filled)
+  let percentage = float.round(progress *. 100.0)
+  "[" <> filled_str <> empty_str <> "] " <> int.to_string(percentage) <> "%"
+}
 
 fn extract_with_input_loader(
   loader: input_loader.InputLoader,
   config: config.Config,
 ) {
   input_loader.try_load_all(loader, fn(in_file) {
-    misc.move_cursor_up(1)
-    shiny.clear_line()
-    misc.move_cursor_up(1)
-    shiny.clear_line()
+    move_cursor_up(1)
+    clear_line()
+    move_cursor_up(1)
+    clear_line()
     io.println(
       int.to_string(in_file.progress + 1)
       <> "/"
@@ -33,7 +52,7 @@ fn extract_with_input_loader(
     case in_file.total_files {
       None -> io.println("...")
       Some(tf) -> {
-        io.println(progress.progress_bar(in_file.progress + 1, tf, 30))
+        io.println(progress_bar(in_file.progress + 1, tf, 30))
       }
     }
 

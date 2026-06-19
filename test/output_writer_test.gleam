@@ -14,22 +14,25 @@ import simplifile
 import temporary
 
 fn example_entries(num: Int) {
-  list.map(list.range(1, num + 1), fn(index) {
-    ledger.new(
-      input_file.InputFile(
-        loader: "loader",
-        name: "name",
-        title: "title",
-        content: "content",
-        progress: index,
-        total_files: None,
+  int.range(1, num + 1, with: [], run: fn(acc, index) {
+    list.prepend(
+      acc,
+      ledger.new(
+        input_file.InputFile(
+          loader: "loader",
+          name: "name",
+          title: "title",
+          content: "content",
+          progress: index,
+          total_files: None,
+        ),
+        None,
+        date.Date(2025, 1, index),
+        "payee" <> int.to_string(index),
+        "comment",
+        #("source_account", "target_account"),
+        money.Money(bigi.from_int(100 * index), decimal_pos: 2, currency: "EUR"),
       ),
-      None,
-      date.Date(2025, 1, index),
-      "payee" <> int.to_string(index),
-      "comment",
-      #("source_account", "target_account"),
-      money.Money(bigi.from_int(100 * index), decimal_pos: 2, currency: "EUR"),
     )
   })
 }
