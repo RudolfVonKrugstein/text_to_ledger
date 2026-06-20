@@ -127,6 +127,31 @@ fn wrap_as_list_item(text: String) -> String {
   }
 }
 
+/// Keep at most the last `n` top-level YAML list items from `text`. A new item
+/// is detected as a line that starts with `- ` at column 0 (matching what
+/// `wrap_as_list_item` produces). Any preamble before the first item is
+/// dropped.
+fn take_last_n_rules(text: String, n: Int) -> String {
+  let lines = string.split(text, "\n")
+  let rule_starts =
+    list.index_fold(lines, [], fn(acc, l, i) {
+      case string.starts_with(l, "- ") {
+        True -> [i, ..acc]
+        False -> acc
+      }
+    })
+    |> list.reverse
+  let to_drop = case list.length(rule_starts) - n {
+    d if d > 0 -> d
+    _ -> 0
+  }
+  let keep_from = case list.drop(rule_starts, to_drop) {
+    [first, ..] -> first
+    [] -> list.length(lines)
+  }
+  list.drop(lines, keep_from) |> string.join("\n")
+}
+
 fn parse_rules(text: String) -> Result(List(rule.Rule), String) {
   case yaml.parse_string(text, rules_decoder()) {
     Ok([]) -> Ok([])
@@ -258,13 +283,17 @@ fn initial_user_input(
     None -> skeleton_rule(missing)
     Some(s) -> {
       log.info("asking suggester for a rule", [])
+      let trimmed_examples = case s.example_count {
+        None -> examples
+        Some(n) -> take_last_n_rules(examples, n)
+      }
       let values =
         dict.to_list(applied.values)
         |> list.sort(fn(a, b) { string.compare(a.0, b.0) })
         |> list.map(fn(kv) { kv.0 <> ": " <> kv.1 })
         |> string.join("\n")
       let inputs = [
-        #("T2L_EXAMPLES_FILE", examples),
+        #("T2L_EXAMPLES_FILE", trimmed_examples),
         #("T2L_CONTENT_FILE", applied.input.content),
         #("T2L_VALUES_FILE", values),
         #("T2L_MISSING_KEYS_FILE", string.join(missing, ", ")),

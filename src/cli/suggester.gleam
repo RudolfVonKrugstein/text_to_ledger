@@ -19,14 +19,20 @@
 import gleam/bit_array
 import gleam/dynamic/decode
 import gleam/list
+import gleam/option.{type Option}
 
 pub type Suggester {
-  Suggester(command: List(String))
+  Suggester(command: List(String), example_count: Option(Int))
 }
 
 pub fn decoder() -> decode.Decoder(Suggester) {
   use command <- decode.field("command", decode.list(decode.string))
-  decode.success(Suggester(command:))
+  use example_count <- decode.optional_field(
+    "example_count",
+    option.None,
+    decode.optional(decode.int),
+  )
+  decode.success(Suggester(command:, example_count:))
 }
 
 /// Run the suggester. Each `(env_var_name, content)` pair becomes a temp file;
