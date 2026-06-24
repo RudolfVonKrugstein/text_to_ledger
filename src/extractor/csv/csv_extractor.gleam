@@ -8,6 +8,7 @@
 import data/extracted_data
 import extractor/csv/csv_column
 import extractor/csv/csv_extractor_config
+import extractor/csv/csv_to_dict
 import extractor/csv/csv_value
 import extractor/extractor
 import gleam/dict
@@ -67,7 +68,7 @@ fn run(
   use by_name <- result.try(case config.with_headers {
     False -> Ok(list.repeat(dict.new(), list.length(by_index)))
     True ->
-      gsv.to_dicts(input.content, config.seperator)
+      csv_to_dict.csv_to_dicts(input.content, config.seperator)
       |> result.map_error(fn(e) {
         extractor.ExtractorFailure(extractor.CsvError(e))
       })
