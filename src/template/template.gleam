@@ -145,6 +145,26 @@ fn find_var(name: String, vars: Vars) {
   dict.get(vars, name) |> option.from_result
 }
 
+/// Apply the "default" mod to a variable
+fn apply_default_mod(
+  values: List(String),
+  parameters: List(String),
+) -> Result(List(String), RenderError) {
+  case parameters {
+    [default] ->
+      case values {
+        [] -> Ok([default])
+        a -> Ok(a)
+      }
+    _ ->
+      Error(ModParameterError(
+        mod: "default",
+        parameters: parameters,
+        msg: "default takes one parameters",
+      ))
+  }
+}
+
 /// Apply the "same" mod to a variable
 fn apply_same_mod(
   values: List(String),
@@ -216,6 +236,7 @@ fn apply_mod(
   parameters: List(String),
 ) -> Result(List(String), RenderError) {
   case mod {
+    "default" | "d" -> apply_default_mod(values, parameters)
     "same" -> apply_same_mod(values, parameters)
     "replace" | "r" -> apply_replace_mod(values, parameters)
     "concat" | "c" -> apply_concat_mod(values, parameters)
