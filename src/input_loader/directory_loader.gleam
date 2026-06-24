@@ -19,8 +19,10 @@ fn next_impl(
         simplifile.read(f)
         |> result.map_error(ReadDirectoryError(f, _)),
       )
-      let assert Ok(first_char) = string.first(content)
-      let assert Ok(#(_, content)) = string.split_once(content, first_char)
+      let content = case content {
+        "\u{feff}" <> rest -> rest
+        _ -> content
+      }
       Ok(
         Some(#(
           InputFile(

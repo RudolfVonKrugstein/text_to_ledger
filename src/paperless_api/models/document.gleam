@@ -24,6 +24,11 @@ pub fn document_decoder() -> decode.Decoder(Document) {
   )
   use title <- decode.field("title", decode.string)
   use content <- decode.field("content", decode.string)
+  // remove BOM
+  let content = case content {
+    "\u{feff}" <> rest -> rest
+    _ -> content
+  }
   use tags <- decode.field("tags", decode.list(decode.int))
   decode.success(DocumentType(
     id:,
