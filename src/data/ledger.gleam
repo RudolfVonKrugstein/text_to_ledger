@@ -64,10 +64,10 @@ pub fn new(
 fn line_to_string(line: LedgerEntryLine) {
   let comment = case line.comment {
     "" -> ""
-    comment -> "  ; " <> string.replace(comment, "\n", "\n  ; ")
+    comment -> "  ; " <> string.replace(comment, "\n", "\n  ; ") <> "\n"
   }
 
-  comment <> "\n  " <> line.account <> "\t" <> money.to_string(line.amount)
+  comment <> "  " <> line.account <> "\t" <> money.to_string(line.amount)
 }
 
 /// Convert to the `LedgerEntry` to a string, that can be put into a ledger file

@@ -14,6 +14,8 @@ pub type TransactionSheet {
   TransactionSheet(
     /// The document this comes from
     origin: InputFile,
+    /// The account (a free string) this sheet is for
+    account: String,
     /// If this and end_date is present, it is checked if:
     /// * All transactions are inside the time range of there bank statements.
     /// * There is a continous list of bank statements, where the next start_date is the last ones end_date.
@@ -35,6 +37,7 @@ pub type TransactionSheet {
 
 pub fn transaction_sheet_decoder() -> decode.Decoder(TransactionSheet) {
   use origin <- decode.field("origin", input_file.decoder())
+  use account <- decode.field("account", decode.string)
   use start_date <- decode.optional_field(
     "start_date",
     None,
@@ -57,6 +60,7 @@ pub fn transaction_sheet_decoder() -> decode.Decoder(TransactionSheet) {
   )
   decode.success(TransactionSheet(
     origin:,
+    account:,
     start_date:,
     end_date:,
     start_balance:,
@@ -67,6 +71,7 @@ pub fn transaction_sheet_decoder() -> decode.Decoder(TransactionSheet) {
 pub fn from_extracted_data(
   data: extracted_data.ExtractedData,
 ) -> Result(TransactionSheet, extracted_data.ExtractedDataError) {
+  use account <- result.try(extracted_data.get_string(data, "account"))
   use start_date <- result.try(extracted_data.get_optional_range_date(
     data,
     "start_date",
@@ -89,6 +94,7 @@ pub fn from_extracted_data(
   ))
   Ok(TransactionSheet(
     origin: data.input,
+    account:,
     start_date:,
     end_date:,
     start_balance:,

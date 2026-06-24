@@ -264,7 +264,7 @@ fn days_in_month(year: Int, month: Int) {
         True -> 29
         False -> 28
       }
-    1 | 3 | 5 | 6 | 8 | 10 | 12 -> 31
+    1 | 3 | 5 | 7 | 8 | 10 | 12 -> 31
     _ -> 30
   }
 }
@@ -326,10 +326,18 @@ pub fn date_is_in_range(date: Date, min: Option(Date), max: Option(Date)) {
   }
 }
 
+/// Increase the day by one
+pub fn next_day(date: Date) {
+  case date.day + 1 > days_in_month(date.year, date.month) {
+    True -> Date(..next_month(date), day: 1)
+    False -> Date(..date, day: date.day + 1)
+  }
+}
+
 /// Incease the month by one.
 fn next_month(date: Date) {
   case date.month {
-    12 -> Date(..date, month: 1)
+    12 -> Date(..date, year: date.year + 1, month: 1)
     _ -> Date(..date, month: date.month + 1)
   }
 }

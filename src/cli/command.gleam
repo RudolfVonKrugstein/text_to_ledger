@@ -4,12 +4,16 @@ import clip/help
 import clip/opt.{type Opt}
 
 pub type Command {
-  RunParameters(config: String)
+  RunParameters(config: String, output: String)
   TestRulesParameters(config: String, extra_rules: String)
 }
 
 fn config_opt() -> Opt(String) {
   opt.new("config") |> opt.help("path to config file")
+}
+
+fn output_opt() -> Opt(String) {
+  opt.new("output") |> opt.help("path to output file")
 }
 
 fn extra_rules_opt() -> Opt(String) {
@@ -20,9 +24,12 @@ fn extra_rules_opt() -> Opt(String) {
 fn run_command() -> clip.Command(Command) {
   clip.command({
     use config <- clip.parameter
-    RunParameters(config:)
+    use output <- clip.parameter
+
+    RunParameters(config:, output:)
   })
   |> clip.opt(config_opt())
+  |> clip.opt(output_opt())
 }
 
 fn test_rules_command() -> clip.Command(Command) {

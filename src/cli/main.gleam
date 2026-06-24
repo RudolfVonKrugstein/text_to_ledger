@@ -61,8 +61,9 @@ pub fn cli() {
   log.info("running command", [])
 
   case command {
-    command.RunParameters(_) -> {
-      run_command.run(input_loaders, config) |> result.map(fn(_) { Nil })
+    command.RunParameters(config: _, output:) -> {
+      run_command.run(input_loaders, config, output)
+      |> result.map(fn(_) { Nil })
     }
     command.TestRulesParameters(config: _, extra_rules:) -> {
       test_rules_command.run(input_loaders, config, extra_rules)

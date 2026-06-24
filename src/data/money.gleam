@@ -77,9 +77,28 @@ pub fn to_string(money: Money) {
     0 -> amount_str
     pos_from_end -> {
       let pos_from_start = string.length(amount_str) - pos_from_end
-      string.drop_end(amount_str, pos_from_end)
-      <> "."
-      <> string.drop_start(amount_str, pos_from_start)
+
+      // add leading 0s
+      let #(amount_str, pos_from_start) = case amount_str, pos_from_start {
+        "-" <> amount_str_no_sign, pos_from_start if pos_from_start <= 1 -> {
+          let missing_zeros = 2 - pos_from_start
+          #(
+            "-" <> string.repeat("0", missing_zeros) <> amount_str_no_sign,
+            pos_from_start + missing_zeros,
+          )
+        }
+        amount_str, pos_from_start if pos_from_start <= 0 -> {
+          let missing_zeros = 1 - pos_from_start
+          #(
+            string.repeat("0", missing_zeros) <> amount_str,
+            pos_from_start + missing_zeros,
+          )
+        }
+        amount_str, pos_from_start -> #(amount_str, pos_from_start)
+      }
+      let before_decimal = string.drop_end(amount_str, pos_from_end)
+      let after_decimal = string.drop_start(amount_str, pos_from_start)
+      before_decimal <> "." <> after_decimal
     }
   }
 
