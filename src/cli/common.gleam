@@ -55,7 +55,7 @@ pub fn extract_from_file(input_file: InputFile, config: config.Config) {
       list.try_fold(config.rules, trans, fn(trans, rule) {
         use new_trans <- result.try(
           rule.try_apply(trans, rule)
-          |> result.map_error(RuleError),
+          |> result.map_error(fn(e) { RuleError(rule, trans, e) }),
         )
         case new_trans {
           None -> Ok(trans)

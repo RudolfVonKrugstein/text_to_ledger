@@ -24,7 +24,11 @@ pub type ExtractFromFileError {
     data: extracted_data.ExtractedData,
     err: extracted_data.ExtractedDataError,
   )
-  RuleError(err: rule.RuleError)
+  RuleError(
+    rule: rule.Rule,
+    data: extracted_data.ExtractedData,
+    err: rule.RuleError,
+  )
 }
 
 pub type Error {
@@ -96,24 +100,48 @@ pub fn log(e: Error) {
   }
 }
 
-fn print_rule_error(err: rule.RuleError, file_vars: List(#(String, String))) {
+fn print_rule_error(
+  rule: option.Option(rule.Rule),
+  data: extracted_data.ExtractedData,
+  err: rule.RuleError,
+  file_vars: List(#(String, String)),
+) {
+  let rule_name =
+    option.then(rule, fn(r) { r.name }) |> option.unwrap("no name")
   case err {
     rule.RegexMatchError(string:, regex:) ->
       log.error("rule failed to match required regular expresssion", [
+        #("rule", rule_name),
         #("regex", regex),
         #("string", string),
         ..file_vars
       ])
     rule.InputValueNotFound(name:) ->
       log.error("rule failed to find input value", [
+        #("rule", rule_name),
         #("value_name", name),
         ..file_vars
       ])
     rule.TemplateRenderError(template:, error:) ->
       log.error("rule failed to render template", [
+        #("rule", rule_name),
         #("template", template),
         #("error", template.error_string(error)),
         ..file_vars
+      ])
+    rule.KeyOverwriteError(keys:) ->
+      log.error("rule overwrites existing keys", [
+        #("rule", rule_name),
+        #("keys", string.join(keys, ", ")),
+        #("applied_rules", string.join(data.applied_rules, ", ")),
+        ..list.flatten([
+          dict.to_list(data.values)
+            |> list.map(fn(val) {
+              let #(key, value) = val
+              #("value_" <> key, value)
+            }),
+          file_vars,
+        ])
       ])
   }
 }
@@ -157,7 +185,8 @@ fn print_extract_run_error(
   case err {
     extractor.ExtractorFailure(extractor:) ->
       print_extractor_error(extractor, file_vars)
-    extractor.RuleFailure(rule:) -> print_rule_error(rule, file_vars)
+    extractor.RuleFailure(data:, error:) ->
+      print_rule_error(option.None, data, error, file_vars)
   }
 }
 
@@ -213,7 +242,8 @@ fn print_extract_from_file_error(
   ]
 
   case err {
-    RuleError(err:) -> print_rule_error(err, file_vars)
+    RuleError(rule:, data:, err:) ->
+      print_rule_error(option.Some(rule), data, err, file_vars)
     ExtractedDataError(data:, err:) ->
       print_extracted_data_error(err, data, file_vars)
     NoExtractorMatch(errors:) -> {

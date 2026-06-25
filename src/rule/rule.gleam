@@ -9,6 +9,7 @@ import gleam/dynamic/decode
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
+import gleam/string
 import regex/regex
 import regexp_ext
 import template/parser/parser
@@ -129,6 +130,8 @@ pub type RuleError {
   TemplateRenderError(template: String, error: template.RenderError)
   /// Input variable was not found
   InputValueNotFound(name: String)
+  /// Ah key would be overwritten
+  KeyOverwriteError(keys: List(String))
 }
 
 pub fn error_string(e: RuleError) -> String {
@@ -141,6 +144,8 @@ pub fn error_string(e: RuleError) -> String {
       <> "error: "
       <> template.error_string(error)
     InputValueNotFound(name:) -> "Input value " <> name <> " was not found"
+    KeyOverwriteError(keys:) ->
+      "The following keys would be overwritten: " <> string.join(keys, ", ")
   }
 }
 
@@ -225,6 +230,19 @@ pub fn apply(
       })
     }),
   )
+
+  let existing_keys =
+    list.fold(dict.keys(new_values), [], fn(acc, key) {
+      case dict.has_key(data.values, key) {
+        True -> [key, ..acc]
+        False -> acc
+      }
+    })
+
+  use _ <- result.try(case existing_keys {
+    [] -> Ok(Nil)
+    keys -> Error(KeyOverwriteError(keys))
+  })
 
   Ok(
     ExtractedData(..data, values: dict.merge(data.values, new_values))

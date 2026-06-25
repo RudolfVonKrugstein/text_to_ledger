@@ -21,12 +21,11 @@ fn run(
   extractor.ExtractRunError,
 ) {
   // sheet data
+  let data =
+    extracted_data.empty(input) |> extracted_data.with_extractor(config.name)
   use sheet_data <- result.try(
-    rule.apply(
-      extracted_data.empty(input) |> extracted_data.with_extractor(config.name),
-      config.sheet,
-    )
-    |> result.map_error(extractor.RuleFailure),
+    rule.apply(data, config.sheet)
+    |> result.map_error(fn(error) { extractor.RuleFailure(data:, error:) }),
   )
 
   let transactions =

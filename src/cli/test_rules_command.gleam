@@ -242,8 +242,11 @@ fn process_transaction(
   suggester: Option(suggester.Suggester),
 ) -> Result(Outcome, error.Error) {
   case apply_rules(transaction, state.active_rules) {
-    Error(rule_err) ->
-      Error(error.ExtractFromFileError(file, error.RuleError(rule_err)))
+    Error(#(rule, rule_err)) ->
+      Error(error.ExtractFromFileError(
+        file,
+        error.RuleError(rule, transaction, rule_err),
+      ))
     Ok(applied) ->
       case ledger.from_extracted_data(applied) {
         Ok(_) -> Ok(Continue(state))
@@ -318,10 +321,11 @@ fn initial_user_input(
 fn apply_rules(
   transaction: ExtractedData,
   rules: List(rule.Rule),
-) -> Result(ExtractedData, rule.RuleError) {
+) -> Result(ExtractedData, #(rule.Rule, rule.RuleError)) {
   list.try_fold(rules, transaction, fn(t, r) {
     rule.try_apply(t, r)
     |> result.map(option.unwrap(_, t))
+    |> result.map_error(fn(e) { #(r, e) })
   })
 }
 
@@ -349,7 +353,11 @@ fn convert_error_string(err: error.ExtractFromFileError) -> String {
       <> value
       <> "): "
       <> msg
-    error.RuleError(err:) -> "rule failed: " <> rule.error_string(err)
+    error.RuleError(rule:, data: _, err:) ->
+      "rule '"
+      <> option.unwrap(rule.name, "no name")
+      <> "' failed: "
+      <> rule.error_string(err)
     error.NoExtractorMatch(_) -> "no extractor matched (unexpected here)"
     error.ToManyExtractorMatched(num:) ->
       "multiple extractors matched: " <> int.to_string(num)
@@ -392,7 +400,7 @@ fn editor_loop(
         Ok(new_rules) -> {
           let combined = list.append(state.active_rules, new_rules)
           case apply_rules(transaction, combined) {
-            Error(rule_err) ->
+            Error(#(rule, rule_err)) ->
               editor_loop(
                 transaction,
                 applied,
@@ -400,7 +408,10 @@ fn editor_loop(
                 extra_rules_path,
                 state,
                 new_user_input,
-                "rule application error:\n" <> rule.error_string(rule_err),
+                "rule '"
+                  <> option.unwrap(rule.name, "no name")
+                  <> "'application error:\n"
+                  <> rule.error_string(rule_err),
               )
             Ok(new_applied) ->
               case ledger.from_extracted_data(new_applied) {

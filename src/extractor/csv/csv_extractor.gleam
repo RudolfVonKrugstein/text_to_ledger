@@ -73,14 +73,13 @@ fn run(
         extractor.ExtractorFailure(extractor.CsvError(e))
       })
   })
+  let data =
+    extracted_data.empty(input_file.InputFile(..input, content: input.title))
+    |> extracted_data.with_extractor(config.name)
 
   use sheet <- result.try(
-    rule.apply(
-      extracted_data.empty(input_file.InputFile(..input, content: input.title))
-        |> extracted_data.with_extractor(config.name),
-      config.sheet,
-    )
-    |> result.map_error(extractor.RuleFailure),
+    rule.apply(data, config.sheet)
+    |> result.map_error(fn(e) { extractor.RuleFailure(data, e) }),
   )
 
   use transactions <- result.try(
