@@ -43,5 +43,5 @@ pub type ExtractorError {
 /// rule problem — kept as separate arms to preserve that origin.
 pub type ExtractRunError {
   ExtractorFailure(extractor: ExtractorError)
-  RuleFailure(rule: rule.RuleError)
+  RuleFailure(data: extracted_data.ExtractedData, error: rule.RuleError)
 }
