@@ -1,11 +1,13 @@
 //// A ledger entry for a ledger file.
 //// This is the main output format.
 
+import bigi
 import data/date
 import data/extracted_data
 import data/money.{type Money}
+import gleam/dynamic/decode
 import gleam/list
-import gleam/option.{type Option}
+import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/string
 import input_loader/input_file
@@ -14,7 +16,7 @@ import input_loader/input_file
 pub type LedgerEntry {
   LedgerEntry(
     /// The input file the ledger comes from
-    input: input_file.InputFile,
+    input: option.Option(input_file.InputFile),
     /// The file to write this do (None for the default file)
     file: Option(String),
     /// The transaction date
@@ -42,13 +44,13 @@ pub type LedgerEntryLine {
 
 /// Create a new LedgerEntry with a transaction from one accoun to another
 pub fn new(
-  input input: input_file.InputFile,
+  input input: option.Option(input_file.InputFile),
   file file: Option(String),
   date date: date.Date,
   payee payee: String,
   comment comment: String,
   accounts accounts: #(String, String),
-  ammount amount: Money,
+  amount amount: Money,
 ) {
   let #(source_account, target_account) = accounts
   LedgerEntry(input:, file:, date:, payee:, comment:, lines: [
@@ -59,6 +61,44 @@ pub fn new(
       comment: "",
     ),
   ])
+}
+
+/// Get ledger from a json file.
+pub fn decoder() -> decode.Decoder(LedgerEntry) {
+  use date <- decode.optional_field("date", "1.1.1970", decode.string)
+  use date <- decode.then(
+    case date.parse_full_date(date, ".", date.DayMonthYear) {
+      Ok(date) -> decode.success(date)
+      Error(e) ->
+        decode.failure(
+          date.Date(1, 1, 1970),
+          "unable to decode " <> date <> ": " <> e,
+        )
+    },
+  )
+  use payee <- decode.optional_field("payee", "Not set", decode.string)
+  use comment <- decode.optional_field("comment", "", decode.string)
+  use source_account <- decode.field("source_account", decode.string)
+  use target_account <- decode.field("target_account", decode.string)
+  use amount <- decode.field("amount", decode.string)
+  use amount <- decode.then(case money.parse_money(amount, None, None) {
+    Ok(amount) -> decode.success(amount)
+    Error(e) ->
+      decode.failure(
+        money.Money(bigi.from_int(0), 0, "EUR"),
+        "unable to decode " <> amount <> ": " <> e,
+      )
+  })
+
+  decode.success(new(
+    input: None,
+    file: None,
+    date:,
+    payee:,
+    comment:,
+    accounts: #(source_account, target_account),
+    amount:,
+  ))
 }
 
 fn line_to_string(line: LedgerEntryLine) {
@@ -138,12 +178,12 @@ pub fn from_extracted_data(data: extracted_data.ExtractedData) {
     <> "\nfile_title: "
     <> data.input.title
   let comment = case extracted_data.get_optional_string(data, "content") {
-    option.None -> comment
-    option.Some(content) -> comment <> "\ncontent:\n" <> content
+    None -> comment
+    Some(content) -> comment <> "\ncontent:\n" <> content
   }
 
   Ok(
-    LedgerEntry(input: data.input, file:, date:, payee:, comment:, lines: [
+    LedgerEntry(input: Some(data.input), file:, date:, payee:, comment:, lines: [
       LedgerEntryLine(account: source_account, amount:, comment: ""),
       LedgerEntryLine(
         account: target_account,

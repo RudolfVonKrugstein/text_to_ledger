@@ -9,14 +9,14 @@ import input_loader/input_file
 pub fn to_string_test() {
   let entry =
     ledger.LedgerEntry(
-      input: input_file.InputFile(
+      input: Some(input_file.InputFile(
         loader: "loader",
         name: "name",
         title: "title",
         content: "content",
         progress: 0,
         total_files: Some(1),
-      ),
+      )),
       file: None,
       date: date.Date(2025, 2, 1),
       payee: "payee",

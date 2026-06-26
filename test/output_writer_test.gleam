@@ -5,7 +5,7 @@ import data/money
 import filepath
 import gleam/int
 import gleam/list
-import gleam/option.{None}
+import gleam/option.{None, Some}
 import gleam/string
 import gleeunit/should
 import input_loader/input_file
@@ -18,14 +18,14 @@ fn example_entries(num: Int) {
     list.prepend(
       acc,
       ledger.new(
-        input_file.InputFile(
+        Some(input_file.InputFile(
           loader: "loader",
           name: "name",
           title: "title",
           content: "content",
           progress: index,
           total_files: None,
-        ),
+        )),
         None,
         date.Date(2025, 1, index),
         "payee" <> int.to_string(index),
