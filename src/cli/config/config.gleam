@@ -35,6 +35,6 @@ pub fn decoder() -> decode.Decoder(Config) {
     None,
     decode.optional(suggester.decoder()),
   )
-
+  
   decode.success(Config(extractors:, inputs:, rules:, suggester:))
 }

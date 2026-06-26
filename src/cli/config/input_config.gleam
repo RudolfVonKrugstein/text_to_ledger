@@ -46,8 +46,9 @@ pub fn decoder() -> decode.Decoder(InputConfig) {
         [],
         decode.list(decode.string),
       )
-      use document_types <- decode.field(
+      use document_types <- decode.optional_field(
         "document_types",
+        [],
         decode.list(decode.string),
       )
       decode.success(InputPaperless(
