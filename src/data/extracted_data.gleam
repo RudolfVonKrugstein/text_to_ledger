@@ -31,6 +31,8 @@ pub type ExtractedData {
     /// To create other types of values from them, use the various
     /// functions provided in this module.
     values: dict.Dict(String, String),
+    /// Is this finalized, meaning has a rule with final=true been applied?
+    finalized: Bool,
   )
 }
 
@@ -43,7 +45,7 @@ pub type ExtractedDataError {
 /// Empty (no varibale/values) extracted data.
 /// This is the starting point for the extraction process.
 pub fn empty(input: input_file.InputFile) {
-  ExtractedData(input, None, [], dict.new())
+  ExtractedData(input, None, [], dict.new(), False)
 }
 
 /// Set the extractor of the data
@@ -78,8 +80,13 @@ pub fn update_input(data: ExtractedData, input: input_file.InputFile) {
 
 /// Convert to a json object, i.E. to serialize to disc.
 pub fn to_json(extracted_data: ExtractedData) -> json.Json {
-  let ExtractedData(input:, values:, matched_extractor:, applied_rules:) =
-    extracted_data
+  let ExtractedData(
+    input:,
+    values:,
+    matched_extractor:,
+    applied_rules:,
+    finalized:,
+  ) = extracted_data
   json.object([
     #("input", input_file.to_json(input)),
     #("values", json.dict(values, fn(string) { string }, json.string)),
@@ -88,6 +95,7 @@ pub fn to_json(extracted_data: ExtractedData) -> json.Json {
       Some(name) -> json.string(name)
     }),
     #("applied_rules", json.array(applied_rules, json.string)),
+    #("finalized", json.bool(finalized)),
   ])
 }
 
@@ -100,11 +108,14 @@ pub fn decoder() -> decode.Decoder(ExtractedData) {
   )
   use matched_extractor <- decode.then(decode.optional(decode.string))
   use applied_rules <- decode.then(decode.list(decode.string))
+  use finalized <- decode.then(decode.bool)
+
   decode.success(ExtractedData(
     input:,
     values:,
     matched_extractor:,
     applied_rules:,
+    finalized:,
   ))
 }
 

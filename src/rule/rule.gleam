@@ -24,6 +24,8 @@ pub type Rule {
     regexes: List(ExtractRegex),
     /// The variables/values to render in case of sucessfull match of the regexes
     values: dict.Dict(String, template.Template),
+    /// Stop processing after this rule
+    final: Bool,
   )
 }
 
@@ -56,6 +58,7 @@ pub fn with_children_decoder() -> decode.Decoder(List(Rule)) {
         dict.new(),
         decode.dict(decode.string, parser.decode_template()),
       )
+      use final <- decode.optional_field("final", False, decode.bool)
 
       decode.success(
         list.map(list.flatten(children), fn(child) {
@@ -66,6 +69,7 @@ pub fn with_children_decoder() -> decode.Decoder(List(Rule)) {
             },
             regexes: list.append(regexes, child.regexes),
             values: dict.merge(values, child.values),
+            final: final || child.final,
           )
         }),
       )
@@ -88,7 +92,9 @@ pub fn decoder() -> decode.Decoder(Rule) {
     dict.new(),
     decode.dict(decode.string, parser.decode_template()),
   )
-  decode.success(Rule(name:, regexes:, values:))
+  use final <- decode.optional_field("final", False, decode.bool)
+
+  decode.success(Rule(name:, regexes:, values:, final:))
 }
 
 /// Decode a single regex or a list into a list
@@ -219,35 +225,44 @@ pub fn apply(
   data: ExtractedData,
   rule: Rule,
 ) -> Result(ExtractedData, RuleError) {
-  use vars <- result.try(collect_variables(rule.regexes, data))
+  case data.finalized {
+    True -> Ok(data)
+    False -> {
+      use vars <- result.try(collect_variables(rule.regexes, data))
 
-  use new_values <- result.try(
-    rule.values
-    |> dict_map_values_error(fn(template) {
-      template.render(template, vars)
-      |> result.map_error(fn(error) {
-        TemplateRenderError(template: template.input, error:)
+      use new_values <- result.try(
+        rule.values
+        |> dict_map_values_error(fn(template) {
+          template.render(template, vars)
+          |> result.map_error(fn(error) {
+            TemplateRenderError(template: template.input, error:)
+          })
+        }),
+      )
+
+      let existing_keys =
+        list.fold(dict.keys(new_values), [], fn(acc, key) {
+          case dict.has_key(data.values, key) {
+            True -> [key, ..acc]
+            False -> acc
+          }
+        })
+
+      use _ <- result.try(case existing_keys {
+        [] -> Ok(Nil)
+        keys -> Error(KeyOverwriteError(keys))
       })
-    }),
-  )
 
-  let existing_keys =
-    list.fold(dict.keys(new_values), [], fn(acc, key) {
-      case dict.has_key(data.values, key) {
-        True -> [key, ..acc]
-        False -> acc
-      }
-    })
-
-  use _ <- result.try(case existing_keys {
-    [] -> Ok(Nil)
-    keys -> Error(KeyOverwriteError(keys))
-  })
-
-  Ok(
-    ExtractedData(..data, values: dict.merge(data.values, new_values))
-    |> extracted_data.with_option_rule(rule.name),
-  )
+      Ok(
+        ExtractedData(
+          ..data,
+          values: dict.merge(data.values, new_values),
+          finalized: rule.final,
+        )
+        |> extracted_data.with_option_rule(rule.name),
+      )
+    }
+  }
 }
 
 /// Apply a rule to `ExtractedData`, but dont give

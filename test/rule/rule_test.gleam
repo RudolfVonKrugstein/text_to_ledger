@@ -33,6 +33,7 @@ pub fn successfull_apply_test() {
       name: Some("test"),
       regexes: [extract_regex.ExtractRegex(regex: re1, on: "in_var")],
       values: dict.from_list([#("out_var", out_var_template)]),
+      final: False,
     )
 
   // act
@@ -47,6 +48,7 @@ pub fn successfull_apply_test() {
       values: dict.from_list([#("in_var", "value123"), #("out_var", "123")]),
       matched_extractor: None,
       applied_rules: ["test"],
+      finalized: False,
     )
   should.equal(Ok(expected_data), apply_res)
   should.equal(Ok(Some(expected_data)), try_apply_res)
@@ -66,6 +68,7 @@ pub fn no_match_apply_test() {
       name: Some("test"),
       regexes: [extract_regex.ExtractRegex(regex: re1, on: "in_var")],
       values: dict.from_list([#("out_var", out_var_template)]),
+      final: False,
     )
 
   // act
@@ -92,6 +95,7 @@ pub fn var_missing_apply_test() {
       name: Some("test"),
       regexes: [extract_regex.ExtractRegex(regex: re1, on: "not_existing")],
       values: dict.from_list([#("out_var", out_var_template)]),
+      final: False,
     )
 
   // act
@@ -118,6 +122,7 @@ pub fn template_error_apply_test() {
       name: Some("test"),
       regexes: [extract_regex.ExtractRegex(regex: re1, on: "in_var")],
       values: dict.from_list([#("out_var", out_var_template)]),
+      final: False,
     )
 
   // act
@@ -144,6 +149,7 @@ pub fn missing_capture_group_apply_test() {
       name: Some("test"),
       regexes: [extract_regex.ExtractRegex(regex: re1, on: "in_var")],
       values: dict.from_list([#("out_var", out_var_template)]),
+      final: False,
     )
 
   // act
@@ -242,6 +248,7 @@ pub fn decode_with_children_no_children_test() {
       values: dict.from_list([#("in_var", "value123")]),
       matched_extractor: None,
       applied_rules: [],
+      finalized: False,
     )
 
   let apply_result = rule.apply(data, rule)

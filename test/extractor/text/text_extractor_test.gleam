@@ -48,6 +48,7 @@ pub fn run_text_extractor_test() {
         name: None,
         regexes: [extract_regex.ExtractRegex(value_re, on: "content")],
         values: dict.from_list([#("value", value_template)]),
+        final: False,
       ),
       transaction_areas: area_regex.AreaSplit(
         start: split_regex.SplitAfter(trans_begin_re),
@@ -67,6 +68,7 @@ pub fn run_text_extractor_test() {
       values: dict.from_list([#("value", "123")]),
       matched_extractor: Some("test extractor"),
       applied_rules: [],
+      finalized: False,
     ),
     sheet,
   )
@@ -80,6 +82,7 @@ pub fn run_text_extractor_test() {
         values: dict.from_list([#("value", "123")]),
         matched_extractor: Some("test extractor"),
         applied_rules: [],
+        finalized: False,
       ),
       extracted_data.ExtractedData(
         input: input_file.InputFile(
@@ -89,6 +92,7 @@ pub fn run_text_extractor_test() {
         values: dict.from_list([#("value", "123")]),
         matched_extractor: Some("test extractor"),
         applied_rules: [],
+        finalized: False,
       ),
     ],
     trans,
