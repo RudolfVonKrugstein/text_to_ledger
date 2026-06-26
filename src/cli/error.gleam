@@ -40,10 +40,16 @@ pub type Error {
   LoadExtraRulesError(file: String, message: String)
   SaveExtraRulesError(file: String, error: simplifile.FileError)
   EditorError(message: String)
+  WriteLedgerError(err: simplifile.FileError)
 }
 
 pub fn log(e: Error) {
   case e {
+    WriteLedgerError(err:) -> {
+      log.error("Error writing ledger file", [
+        #("error", simplifile.describe_error(err)),
+      ])
+    }
     InputLoaderError(err:) -> print_input_loader_error(err)
     ParseParameterError(msg:) -> {
       log.error("unable to parse parameters", [#("message", msg)])

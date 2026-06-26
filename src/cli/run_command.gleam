@@ -80,14 +80,13 @@ pub fn run(
   config: config.Config,
   output: String,
 ) {
-  simplifile.write(output, "")
+  use _ <- result.try(
+    simplifile.write(output, "") |> result.map_error(error.WriteLedgerError),
+  )
 
   use input_loader <- list.try_map(input_loaders)
 
-  use extracted <- result.try(extract_with_input_loader(
-    echo input_loader,
-    config,
-  ))
+  use extracted <- result.try(extract_with_input_loader(input_loader, config))
 
   echo list.map(extracted, fn(e) {
     let #(sheet, ledger) = e
@@ -104,7 +103,9 @@ pub fn run(
   // print out!
   list.each(extracted, fn(e) {
     let #(_, ledger) = e
-    list.each(ledger, fn(l) { simplifile.append(output, ledger.to_string(l) <> "\n" )})
+    list.each(ledger, fn(l) {
+      simplifile.append(output, ledger.to_string(l) <> "\n")
+    })
   })
 
   Ok(Nil)
