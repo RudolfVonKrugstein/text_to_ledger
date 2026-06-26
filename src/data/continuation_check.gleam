@@ -38,7 +38,6 @@ pub fn by_start_date(sheets: List(transaction_sheet.TransactionSheet)) {
     [sheet, ..sheets] ->
       case sheet.start_date {
         None -> {
-          echo sheet
           None
         }
         Some(d) ->

@@ -130,8 +130,20 @@ pub fn from_extracted_data(data: extracted_data.ExtractedData) {
     "target_account",
   ))
 
+  let comment =
+    "loader: "
+    <> data.input.loader
+    <> "\nfile_name: "
+    <> data.input.name
+    <> "\nfile_title: "
+    <> data.input.title
+  let comment = case extracted_data.get_optional_string(data, "content") {
+    option.None -> comment
+    option.Some(content) -> comment <> "\ncontent:\n" <> content
+  }
+
   Ok(
-    LedgerEntry(input: data.input, file:, date:, payee:, comment: "", lines: [
+    LedgerEntry(input: data.input, file:, date:, payee:, comment:, lines: [
       LedgerEntryLine(account: source_account, amount:, comment: ""),
       LedgerEntryLine(
         account: target_account,
