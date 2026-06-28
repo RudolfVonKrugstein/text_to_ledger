@@ -1,6 +1,7 @@
 import cli/config/extractor_config
 import cli/config/input_config
 import cli/suggester.{type Suggester}
+import data/ledger
 import extractor/extractor
 import gleam/dynamic/decode
 import gleam/list
@@ -17,6 +18,8 @@ pub type Config {
     /// Optional external suggester used by the `test-rules` command to
     /// pre-fill the editor with a generated rule.
     suggester: Option(Suggester),
+    // Additional entries for the ledger
+    extra_entries: List(ledger.LedgerEntry),
   )
 }
 
@@ -35,6 +38,17 @@ pub fn decoder() -> decode.Decoder(Config) {
     None,
     decode.optional(suggester.decoder()),
   )
-  
-  decode.success(Config(extractors:, inputs:, rules:, suggester:))
+  use extra_entries <- decode.optional_field(
+    "extra_entries",
+    [],
+    decode.list(ledger.decoder()),
+  )
+
+  decode.success(Config(
+    extractors:,
+    inputs:,
+    rules:,
+    suggester:,
+    extra_entries:,
+  ))
 }

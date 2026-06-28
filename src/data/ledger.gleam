@@ -107,7 +107,7 @@ fn line_to_string(line: LedgerEntryLine) {
     comment -> "  ; " <> string.replace(comment, "\n", "\n  ; ") <> "\n"
   }
 
-  comment <> "  " <> line.account <> "\t" <> money.to_string(line.amount)
+  comment <> "  " <> line.account <> "  " <> money.to_string(line.amount)
 }
 
 /// Convert to the `LedgerEntry` to a string, that can be put into a ledger file

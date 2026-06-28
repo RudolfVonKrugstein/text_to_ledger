@@ -101,10 +101,16 @@ pub fn run(
   )
 
   // print out!
+  // extra entries
+  list.each(config.extra_entries, fn(l) {
+    simplifile.append(output, ledger.to_string(l) <> "\n\n")
+  })
+
+  // all ledgers
   list.each(extracted, fn(e) {
     let #(_, ledger) = e
     list.each(ledger, fn(l) {
-      simplifile.append(output, ledger.to_string(l) <> "\n")
+      simplifile.append(output, ledger.to_string(l) <> "\n\n")
     })
   })
 
